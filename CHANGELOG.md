@@ -33,6 +33,12 @@
   ID 查询返回 True,搜索却返回 0 篇,于是守卫放行、测试失败。
   现拆成两项独立能力探测:`can_judge_citations()` 与 `can_search_literature()`。
 
+### 修复
+- **v0.2.0 的 Release 卡在 Queued 两小时**:`release` job 依赖整个 desktop 矩阵,
+  而 `macos-13`(Intel)runner 一直排不上队,其余三个平台早已构建完成却无法发布。
+  已移除 macos-13(Intel 用户本地构建),并给 desktop job 加 45 分钟超时 ——
+  **卡住的 runner 不得挟持整个发布**。
+
 ### 更正
 - **STATUS.md 的「桌面应用从未编译」已失效**:v0.2.0 的 release 工作流实际在
   ubuntu / macOS / Windows 上都构建成功了。已改为「能构建,但从未运行过」,

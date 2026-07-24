@@ -79,6 +79,8 @@ that stopped being true once CI built it. 本节此前写「从未编译过」,C
   opened the window. A successful compile says the Rust and frontend builds are sound;
   it says nothing about whether the UI works, whether the sidecars spawn correctly on a
   clean machine, or whether the splash-to-main handoff behaves.
+- **Intel macOS has no prebuilt installer.** That CI runner can queue for hours and
+  would block the whole release, so it is not built. Intel users must build locally.
 - macOS `.dmg` files are **unsigned and un-notarised** — Gatekeeper will block them on a
   normal Mac. Windows installers are unsigned too, so SmartScreen will warn.
 - The shell↔orchestrator IPC protocol was verified with a Node-based shell simulator,

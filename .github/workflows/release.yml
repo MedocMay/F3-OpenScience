@@ -23,9 +23,17 @@ jobs:
   # ── Desktop installers: best-effort ───────────────────────────────
   # 桌面安装包:尽力而为
   #
-  # The Tauri shell has never been compiled (see STATUS.md). These builds are
-  # marked continue-on-error so a desktop failure does not block the Release —
-  # the Python package and source archives still ship.
+  # These builds are marked continue-on-error so a desktop failure does not block
+  # the Release — the Python package still ships.
+  #
+  # Intel macOS (macos-13) is deliberately omitted: that runner can queue for
+  # hours, and because `release` needs the whole matrix, one stuck runner leaves
+  # the Release permanently Queued. This actually happened on the first v0.2.0
+  # attempt. Intel users can build locally: cd apps/shell && npm run tauri build
+  #
+  # 有意不构建 Intel macOS(macos-13):该 runner 可能排队数小时,而 release
+  # 依赖整个矩阵,一个卡住的 runner 会让 Release 永远停在 Queued。
+  # v0.2.0 第一次发布就是这么卡住的。Intel 用户可本地自行构建。
   #
   # Tauri 壳从未编译过(见 STATUS.md)。这里标记 continue-on-error,
   # 桌面构建失败不会阻塞 Release —— Python 包与源码归档照常发布。
@@ -39,11 +47,11 @@ jobs:
             deps: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
           - os: macos-latest    # .dmg (Apple Silicon)
             deps: ""
-          - os: macos-13        # .dmg (Intel)
-            deps: ""
           - os: windows-latest  # .msi / .exe
             deps: ""
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45        # a stuck runner must not hold the Release hostage
+                               # 卡住的 runner 不得挟持整个 Release
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -112,12 +120,24 @@ jobs:
 
             ### Desktop installers · 桌面安装包
 
-            Attached when the build succeeds. The Tauri shell has never been compiled before,
-            so these are best-effort — build locally with `cd apps/shell && npm run tauri build`
-            if an installer for your platform is missing.
+            Linux (`.AppImage` / `.deb`), macOS **Apple Silicon** (`.dmg`), and Windows
+            (`.msi` / `.exe`) are attached when their builds succeed.
 
-            构建成功时会附在下方。Tauri 壳此前从未编译过,属尽力而为 ——
-            若缺少你平台的安装包,可本地自行构建。
+            **Intel macOS is not prebuilt** — that runner queues for hours and would hold
+            the whole release. Build locally: `cd apps/shell && npm run tauri build`
+
+            ⚠️ **Installers are unsigned.** macOS Gatekeeper will refuse to open the `.dmg`
+            (right-click → Open, or `xattr -d com.apple.quarantine`); Windows SmartScreen
+            will warn. And the GUI itself has never been run by anyone — see STATUS.md.
+
+            Linux、macOS **Apple Silicon**、Windows 的安装包在构建成功时附在下方。
+
+            **Intel macOS 无预编译包** —— 该 runner 排队可能数小时,会拖住整个发布。
+            请本地构建:`cd apps/shell && npm run tauri build`
+
+            ⚠️ **安装包未签名。** macOS 会被 Gatekeeper 拦住(右键→打开,或用
+            `xattr -d com.apple.quarantine` 解除);Windows 会触发 SmartScreen 警告。
+            而且 GUI 本身从未有人真正运行过 —— 见 STATUS.md。
 
             ### Docs · 文档
 
