@@ -27,12 +27,37 @@ The tests must respect the same distinction.
 from __future__ import annotations
 import os, urllib.request
 
-_PROBE = "http://export.arxiv.org/api/query?search_query=all:test&max_results=1"
 _cached: bool | None = None
 
+# Known-good and known-bad arXiv IDs used to probe the registry.
+# 用于探测登记处的一真一假 arXiv ID。
+_REAL_ID = "1706.03762"      # Attention Is All You Need
+_FAKE_ID = "2099.99999"      # well-formed but nonexistent · 格式合法但不存在
 
-def net_ok(timeout: int = 25) -> bool:
-    """Is the academic-API network reachable? Result cached per process."""
+
+def net_ok() -> bool:
+    """Can the arXiv registry give a DEFINITIVE existence verdict right now?
+
+    ★ We probe the capability, not mere connectivity.
+
+    A plain reachability check is not enough. arXiv rate-limits CI runners, and a
+    throttled response makes `check_arxiv` return None (unknown) — at which point
+    the verifier correctly reports `manual` rather than `reject`. A test asserting
+    `reject` would then fail for reasons unrelated to the code.
+
+    ★ 我们探测的是**能力**,不是连通性。
+
+    只探测"能不能连上"是不够的。arXiv 会限流 CI runner,被限流时 `check_arxiv`
+    返回 None(未知),校验器据此正确地报 `manual` 而非 `reject` ——
+    此时断言 `reject` 的测试会因与代码无关的原因失败。
+
+    So: require a definitive True for a real ID *and* a definitive False for a
+    fake one. Anything less (None / unknown) means the registry cannot be trusted
+    to answer right now, and citation-existence tests must skip.
+
+    因此:真 ID 必须确定为 True,假 ID 必须确定为 False。
+    只要有一个是 None,就说明登记处此刻给不出确定答案,存在性测试必须跳过。
+    """
     global _cached
     if _cached is not None:
         return _cached
@@ -40,8 +65,12 @@ def net_ok(timeout: int = 25) -> bool:
         _cached = False
         return _cached
     try:
-        urllib.request.urlopen(_PROBE, timeout=timeout).read()
-        _cached = True
+        import sys, pathlib
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+        from coe_kernel import apis
+        real, _ = apis.check_arxiv(_REAL_ID)
+        fake, _ = apis.check_arxiv(_FAKE_ID)
+        _cached = (real is True) and (fake is False)
     except Exception:
         _cached = False
     return _cached
@@ -51,6 +80,7 @@ def skip_if_offline(name: str = "") -> bool:
     """Return True (and print a notice) when the suite should be skipped."""
     if net_ok():
         return False
-    print(f"  ⚠️  Academic APIs unreachable — skipping {name or 'network-dependent test'} "
+    print(f"  ⚠️  arXiv cannot give a definitive verdict right now (unreachable or "
+          f"rate-limited) — skipping {name or 'network-dependent test'} "
           f"(NOT a regression · 非回归)")
     return True

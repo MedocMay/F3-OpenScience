@@ -10,6 +10,25 @@ _UA = {"User-Agent": "f3-coe/0.1 (mailto:research@opensci.dev)"}
 _fails = {"arxiv": 0, "crossref": 0, "openalex": 0}
 _BREAK = 4  # 连续失败 >= 4 触发熔断
 
+# arXiv 官方 API 指南要求请求间隔 >= 3 秒。连发会被限流,
+# 被限流时 check_arxiv 返回 None(未知)—— 校验器据此报 manual 而非 reject,
+# 行为正确,但会让依赖确定答案的调用方拿不到结论。
+# 缓存命中不计入限速(不产生实际请求)。
+_MIN_INTERVAL = {"arxiv": float(os.environ.get("COE_ARXIV_MIN_INTERVAL", "3.0")),
+                 "crossref": 0.0, "openalex": 0.0}
+_last_call = {"arxiv": 0.0, "crossref": 0.0, "openalex": 0.0}
+
+
+def _throttle(svc: str) -> None:
+    """Respect the service's minimum request interval. 遵守服务方的最小请求间隔。"""
+    gap = _MIN_INTERVAL.get(svc, 0.0)
+    if gap <= 0:
+        return
+    wait = gap - (time.time() - _last_call[svc])
+    if wait > 0:
+        time.sleep(wait)
+    _last_call[svc] = time.time()
+
 def _cache_path(key: str) -> str:
     return os.path.join(_CACHE_DIR, hashlib.sha256(key.encode()).hexdigest()[:20] + ".json")
 
@@ -21,6 +40,7 @@ def _get(url: str, svc: str, timeout: int = 15):
         cached = json.load(open(cp))
         # 缓存回放必须保留"权威否定"语义,否则第二次查询会退化为"未知"
         return cached, ("not_found" if cached.get("not_found") else "cache")
+    _throttle(svc)          # 缓存未命中才走到这里,此时才需要限速
     try:
         req = urllib.request.Request(url, headers=_UA)
         raw = urllib.request.urlopen(req, timeout=timeout).read().decode(errors="replace")
