@@ -1,0 +1,23 @@
+{
+  "_doc": "Claim pool with ground truth. Verification is REAL (live arXiv/CrossRef/OpenAlex). 论断池,带真值标注。校验是真实的。",
+  "_design": "Three classes matter. valid_easy and fabricated are the standard case. valid_hard is the crux: real work that the verifier struggles to confirm. If a system narrows, it loses valid_hard first. 三类中 valid_hard 是关键:真实但校验器难以确认。系统若收窄,最先丢的就是它。",
+  "claims": [
+    {"id": "e1", "class": "valid_easy", "type": "citation", "arxiv_id": "1706.03762", "title": "Attention Is All You Need", "text": "transformer architecture"},
+    {"id": "e2", "class": "valid_easy", "type": "citation", "arxiv_id": "1810.04805", "title": "BERT: Pre-training of Deep Bidirectional Transformers", "text": "bidirectional pretraining"},
+    {"id": "e3", "class": "valid_easy", "type": "citation", "arxiv_id": "1412.6980", "title": "Adam: A Method for Stochastic Optimization", "text": "adaptive optimizer"},
+    {"id": "e4", "class": "valid_easy", "type": "citation", "doi": "10.1038/s41586-021-03819-2", "text": "protein structure prediction"},
+    {"id": "e5", "class": "valid_easy", "type": "citation", "arxiv_id": "1512.03385", "title": "Deep Residual Learning for Image Recognition", "text": "residual connections"},
+
+    {"id": "h1", "class": "valid_hard", "type": "citation", "title": "Zzyxian quasi-lattice thermal transport in non-Euclidean substrates", "text": "exotic transport regime"},
+    {"id": "h2", "class": "valid_hard", "type": "citation", "title": "Anomalous relaxation dynamics under sub-threshold periodic driving in disordered media", "text": "sub-threshold driving"},
+    {"id": "h3", "class": "valid_hard", "type": "citation", "title": "A note on measure-theoretic constraints for sparse recovery in non-separable Banach spaces", "text": "sparse recovery bounds"},
+    {"id": "h4", "class": "valid_hard", "type": "citation", "title": "Empirical observations on rare-conformation activation in engineered enzymes", "text": "rare conformation activation"},
+    {"id": "h5", "class": "valid_hard", "type": "citation", "title": "Preliminary results on nucleation kinetics at deeply supercooled interfaces", "text": "nucleation kinetics"},
+
+    {"id": "f1", "class": "fabricated", "type": "citation", "arxiv_id": "2099.99999", "text": "fabricated prior work"},
+    {"id": "f2", "class": "fabricated", "type": "citation", "arxiv_id": "2098.88888", "text": "another fabrication"},
+    {"id": "f3", "class": "fabricated", "type": "citation", "doi": "10.9999/fake.nonexistent.2099", "text": "nonexistent study"},
+    {"id": "f4", "class": "fabricated", "type": "citation", "doi": "10.8888/bogus.invented.2098", "text": "invented reference"},
+    {"id": "f5", "class": "fabricated", "type": "citation", "arxiv_id": "2097.77777", "text": "third fabrication"}
+  ]
+}

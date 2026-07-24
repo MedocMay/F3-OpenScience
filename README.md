@@ -283,6 +283,7 @@ Docker orchestration · Windows/macOS execution · scale and performance · secu
 | [STATUS.md](STATUS.md) · [中文](STATUS.zh-CN.md) | ★ Verification boundary · 验证边界(**未测项清单**) |
 | [CHANGELOG.md](CHANGELOG.md) | Version changes and migration notes · 版本变更与迁移说明 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) · [中文](CONTRIBUTING.zh-CN.md) | Contribution guide · 贡献指南(含校验逻辑的特别要求) |
+| [experiments/narrowing/](experiments/narrowing/) | ★ A/B harness: does conflating "cannot verify" with "wrong" narrow the reachable space?<br>★ A/B 实验:把「无法核验」等同于「错误」是否收窄可达空间 |
 | [SECURITY.md](SECURITY.md) · [中文](SECURITY.zh-CN.md) | Security policy · 安全策略 |
 
 ---

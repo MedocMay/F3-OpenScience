@@ -142,7 +142,11 @@ Even within what is implemented, the following are **inherent design boundaries*
 
 In order of value:
 
-1. **Run it end-to-end with a real LLM** and report real false-rejection / missed-fabrication rates
+1. **Run it end-to-end with a real LLM** and report real false-rejection / missed-fabrication rates.
+   A ready-made A/B harness for the core claim is in
+   [`experiments/narrowing/`](experiments/narrowing/) — it currently uses a
+   stand-in generator; swapping in a real model is the experiment that would
+   turn the argument into a finding.
 2. **Try it on real research topics** — we especially want cases where the verifier killed
    something real → please file a [false-rejection report](.github/ISSUE_TEMPLATE/false-rejection.yml)
 3. **Build and try the desktop app** (requires the Rust toolchain)

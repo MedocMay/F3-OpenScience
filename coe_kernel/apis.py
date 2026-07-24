@@ -15,7 +15,10 @@ _BREAK = 4  # 连续失败 >= 4 触发熔断
 # 行为正确,但会让依赖确定答案的调用方拿不到结论。
 # 缓存命中不计入限速(不产生实际请求)。
 _MIN_INTERVAL = {"arxiv": float(os.environ.get("COE_ARXIV_MIN_INTERVAL", "3.0")),
-                 "crossref": 0.0, "openalex": 0.0}
+                 "crossref": float(os.environ.get("COE_CROSSREF_MIN_INTERVAL", "0.5")),
+                 # OpenAlex 无 API key 时限流较紧;不节流会连续失败并打开熔断,
+                 # 使「索引未覆盖」被误报为「网络未知」。
+                 "openalex": float(os.environ.get("COE_OPENALEX_MIN_INTERVAL", "1.0"))}
 _last_call = {"arxiv": 0.0, "crossref": 0.0, "openalex": 0.0}
 
 
