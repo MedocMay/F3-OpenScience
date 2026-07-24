@@ -27,6 +27,15 @@
   现改为**双向探测**:已知真 ID 必须解析成功 **且** 已知假 ID 必须被明确否定,
   两者都成立才执行引用类断言。
 - CI 改为跑完全部 14 个套件再统一报失败,便于一次看清所有问题。
+
+### 变更
+- **Release 工作流实际会创建 Release 了**:原来只用 `upload-artifact`,产物存在 Actions
+  运行记录里(90 天过期),**不会附到 Release 上**。现新增 `release` job,收集全部产物
+  并通过 `softprops/action-gh-release` 发布,附带双语说明与免责声明。
+- 桌面构建标记 `continue-on-error` —— Tauri 壳从未编译过,失败不应阻塞 Release,
+  Python 包与源码归档照常发布。
+- 移除 `push: false` 的 Docker job(构建完即丢弃,多架构 QEMU 编译还很慢)。
+- 新增 `docs/assets/social-preview.png`(1280×640)与其生成器,用于 GitHub 社交预览。
 - CI 中 `actions/*` 升级到最新大版本,消除 Node.js 20 弃用警告。
 
 ---

@@ -1,49 +1,64 @@
-name: Release Installers
+name: Release
+
 on:
   push: { tags: ["v*"] }
   workflow_dispatch:
 
+permissions:
+  contents: write          # required to create the Release · 创建 Release 需要
+
 jobs:
-  # 后端:一次构建,全平台通用(纯 Python)
+  # ── Python package: one build, works on every OS ──────────────────
+  # Python 包:一次构建,全平台通用(核心零依赖)
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - run: pip install build && python -m build
       - uses: actions/upload-artifact@v4
-        with: { name: opensci-python, path: dist/* }
+        with: { name: python-dist, path: dist/* }
 
-  # 桌面壳:三平台矩阵,各自产出原生安装包
+  # ── Desktop installers: best-effort ───────────────────────────────
+  # 桌面安装包:尽力而为
+  #
+  # The Tauri shell has never been compiled (see STATUS.md). These builds are
+  # marked continue-on-error so a desktop failure does not block the Release —
+  # the Python package and source archives still ship.
+  #
+  # Tauri 壳从未编译过(见 STATUS.md)。这里标记 continue-on-error,
+  # 桌面构建失败不会阻塞 Release —— Python 包与源码归档照常发布。
   desktop:
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04   # .AppImage / .deb
+          - os: ubuntu-22.04    # .AppImage / .deb
             deps: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-          - os: macos-latest   # .dmg (Apple Silicon)
+          - os: macos-latest    # .dmg (Apple Silicon)
             deps: ""
-          - os: macos-13       # .dmg (Intel)
+          - os: macos-13        # .dmg (Intel)
             deps: ""
-          - os: windows-latest # .msi / .exe
+          - os: windows-latest  # .msi / .exe
             deps: ""
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: "22" }
       - uses: dtolnay/rust-toolchain@stable
       - name: System deps
         if: matrix.deps != ''
         run: ${{ matrix.deps }}
-      - name: Install & build shell
+      - name: Build desktop shell
         working-directory: apps/shell
         run: npm i && npm run tauri build
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
-          name: opensci-desktop-${{ matrix.os }}
+          name: desktop-${{ matrix.os }}
           path: |
             apps/shell/src-tauri/target/release/bundle/**/*.AppImage
             apps/shell/src-tauri/target/release/bundle/**/*.deb
@@ -51,18 +66,62 @@ jobs:
             apps/shell/src-tauri/target/release/bundle/**/*.msi
             apps/shell/src-tauri/target/release/bundle/**/*.exe
 
-  # 容器镜像:多架构
-  docker:
+  # ── Publish the Release ───────────────────────────────────────────
+  # 发布 Release:收集全部产物并附到 Release 上
+  release:
+    needs: [backend, desktop]
+    if: always() && needs.backend.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - name: Build multi-arch image (load only; push 需配置 registry)
-        uses: docker/build-push-action@v6
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f \
+            \( -name '*.whl' -o -name '*.tar.gz' -o -name '*.AppImage' \
+               -o -name '*.deb' -o -name '*.dmg' -o -name '*.msi' -o -name '*.exe' \) \
+            -exec cp {} release/ \;
+          ls -la release/
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          context: .
-          file: deploy/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: false
-          tags: f3-openscience:${{ github.ref_name }}
+          files: release/*
+          generate_release_notes: true
+          body: |
+            ## F3-OpenScience ${{ github.ref_name }}
+
+            **敢署名,且不因此变窄 · Sign your name to it — without narrowing what you can reach**
+
+            > ⚠️ **Research prototype · 研究原型**
+            > Built under resource constraints and not comprehensively tested.
+            > Never run end-to-end with a real LLM; never produced an actual research result.
+            > 资源受限下开发,未经全面测试。从未用真实 LLM 端到端跑过,也从未产出过真实研究成果。
+            > **Please read [STATUS.md](https://github.com/${{ github.repository }}/blob/main/STATUS.md) before use.**
+
+            ### Install · 安装
+
+            ```bash
+            pip install f3-openscience              # core · 核心(零第三方依赖)
+            pip install 'f3-openscience[cloud]'     # cloud · 云端
+            pip install 'f3-openscience[chem]'      # chemistry · 化学判据
+            ```
+
+            Or download the wheel below · 或下载下方的 wheel。
+
+            ### Desktop installers · 桌面安装包
+
+            Attached when the build succeeds. The Tauri shell has never been compiled before,
+            so these are best-effort — build locally with `cd apps/shell && npm run tauri build`
+            if an installer for your platform is missing.
+
+            构建成功时会附在下方。Tauri 壳此前从未编译过,属尽力而为 ——
+            若缺少你平台的安装包,可本地自行构建。
+
+            ### Docs · 文档
+
+            [README](https://github.com/${{ github.repository }}#readme) ·
+            [STATUS](https://github.com/${{ github.repository }}/blob/main/STATUS.md) ·
+            [INNOVATION](https://github.com/${{ github.repository }}/blob/main/INNOVATION.md) ·
+            [REACHABILITY](https://github.com/${{ github.repository }}/blob/main/docs/REACHABILITY.md)
