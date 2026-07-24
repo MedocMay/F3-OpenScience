@@ -1,0 +1,60 @@
+syntax = "proto3";
+package opensci.memory.v1;
+
+// 经验库 global 汇聚服务 (跨用户飞轮的中心侧)。
+// 本地 local/team 用 SQLite;仅 global 走此 gRPC。
+// 主权铁律 (D6):上行必须 consent + 脱敏 + 质量门;记指纹不记身份;可撤回。
+
+service GlobalMemory {
+  // 晋升一条本地 lesson 到 global (服务端再校验 consent/脱敏/质量门,双保险)。
+  rpc Promote(PromoteRequest) returns (PromoteResponse);
+  // 生成前置注入:按上下文拉取 global 高质量 lesson。
+  rpc Query(QueryRequest) returns (QueryResponse);
+  // 用户撤回自己贡献的 lesson (下架 + 衍生来源失效)。
+  rpc Revoke(RevokeRequest) returns (RevokeResponse);
+  // 社区投票下架 (质量治理)。
+  rpc Vote(VoteRequest) returns (VoteResponse);
+}
+
+enum LessonKind {
+  LESSON_KIND_UNSPECIFIED = 0;
+  FAKE_CITE = 1;
+  UNSOURCED_NUM = 2;
+  FIG_CODE_MISMATCH = 3;
+}
+
+message VerifyLesson {
+  string id = 1;
+  LessonKind kind = 2;
+  string pattern = 3;                 // 抽象模式,非原始内容 (脱敏后)
+  int32 repro_count = 4;              // 质量门:>= min_repro 才可 global
+  string contributor_fingerprint = 5; // 指纹,不含身份
+  int32 reuse_count = 6;
+  double decayed_weight = 7;
+  int32 votes = 8;
+  string status = 9;                  // active | retracted
+}
+
+message PromoteRequest {
+  VerifyLesson lesson = 1;
+  bool consent = 2;                   // 必须 true,否则拒
+  bool desensitized = 3;             // 客户端已脱敏标记;服务端二次校验
+}
+message PromoteResponse {
+  bool ok = 1;
+  string rejected_reason = 2;         // no_consent | below_quality_gate | desensitize_failed
+  string global_id = 3;
+}
+
+message QueryRequest {
+  repeated LessonKind kinds = 1;
+  string context = 2;
+  int32 top_k = 3;
+}
+message QueryResponse { repeated VerifyLesson lessons = 1; }
+
+message RevokeRequest { string global_id = 1; string contributor_fingerprint = 2; }
+message RevokeResponse { bool ok = 1; }
+
+message VoteRequest { string global_id = 1; bool down = 2; }
+message VoteResponse { bool ok = 1; int32 votes = 2; string status = 3; }

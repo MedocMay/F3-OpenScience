@@ -1,0 +1,37 @@
+name: Bug 报告
+description: 功能不符合预期
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes: {label: 问题描述}
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      value: |
+        1.
+        2.
+        3.
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes: {label: 版本, placeholder: "0.2.0"}
+    validations: {required: true}
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: 部署模式
+      options: [本地部署, 云端部署, 混合部署, 从源码运行]
+    validations: {required: true}
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options: [Linux, macOS, Windows, WSL2, Docker]
+    validations: {required: true}
+  - type: textarea
+    id: logs
+    attributes: {label: 相关日志, render: shell}

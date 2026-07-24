@@ -1,0 +1,16 @@
+.git
+.github
+__pycache__
+*.pyc
+data/
+*.db
+node_modules
+target
+dist
+build
+installers
+docs
+tests
+.env
+.env.*
+!.env.example

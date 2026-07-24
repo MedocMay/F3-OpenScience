@@ -1,0 +1,13 @@
+{
+  "run_id": "golden-1",
+  "draft": "# Draft: efficient transformers for battery health\nWe build on the transformer architecture (arxiv:1706.03762) and on AlphaFold (doi:10.1038/s41586-021-03819-2). Our method also extends the fabricated prior work (arxiv:2099.99999) and a nonexistent study (doi:10.9999/fake.nonexistent.2099). On our benchmark we reach an accuracy improvement of 12.4% over the baseline, while the reported energy reduction of 88.8% is not in any log.",
+  "claims": [
+    {"id": "c-attn", "type": "citation", "arxiv_id": "1706.03762", "title": "Attention Is All You Need", "text": "we build on the transformer architecture"},
+    {"id": "c-af", "type": "citation", "doi": "10.1038/s41586-021-03819-2", "text": "protein structure prediction with AlphaFold"},
+    {"id": "c-fake1", "type": "citation", "arxiv_id": "2099.99999", "text": "fabricated prior work"},
+    {"id": "c-fake2", "type": "citation", "doi": "10.9999/fake.nonexistent.2099", "text": "nonexistent study"},
+    {"id": "n-acc", "type": "number", "value": "12.4", "text": "accuracy improvement of 12.4%"},
+    {"id": "n-energy", "type": "number", "value": "88.8", "text": "energy reduction of 88.8%"}
+  ],
+  "run_log": "epoch 10 | val_accuracy 0.824 | baseline 0.700 | improvement 12.4%\nfinal metrics logged"
+}

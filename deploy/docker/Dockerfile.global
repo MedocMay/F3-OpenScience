@@ -1,0 +1,10 @@
+# global 记忆共享服务(独立部署,跨用户/云端多租户共享层)。
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+COPY . /app
+ENV OPENSCI_GLOBAL_DB=/data/global.db PORT=8090
+VOLUME /data
+EXPOSE 8090
+HEALTHCHECK --interval=30s CMD curl -sf http://localhost:8090/healthz || exit 1
+CMD ["python3", "deploy/global_service.py"]

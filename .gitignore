@@ -1,0 +1,58 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- 运行时数据(务必不要提交)----
+data/
+*.db
+*.sqlite
+*.sqlite3
+/tmp/
+
+# ---- 密钥与本地配置(只提交 .example)----
+.env
+.env.*
+!.env.example
+!.env.prod.example
+deploy/.env
+deploy/.env.prod
+
+# ---- Node / TS ----
+node_modules/
+orchestrator-ts/dist/
+apps/shell/dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# ---- Rust / Tauri ----
+target/
+apps/shell/src-tauri/target/
+apps/shell/src-tauri/gen/
+
+# ---- 打包产物 ----
+*.spec
+!packaging/opensci.spec
+installers/
+*.whl
+*.tar.gz
+!tests/golden/*.json
+
+# ---- 缓存 ----
+.coe_cache/
+coe_cache/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

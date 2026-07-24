@@ -1,0 +1,10 @@
+# 生产:把 DOMAIN 换成你的域名,Caddy 自动申请/续期 Let's Encrypt 证书。
+{$DOMAIN:localhost} {
+	encode gzip
+	# SSE 需要禁用缓冲
+	reverse_proxy gateway:8080 {
+		flush_interval -1
+		# 多副本时启用按 run 粘性(需 LB 层配合;单副本无需):
+		# lb_policy header X-Run-Id
+	}
+}

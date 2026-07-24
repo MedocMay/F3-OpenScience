@@ -1,0 +1,21 @@
+# 云端多租户部署骨架。 用法:OPENSCI_TOKEN=xxx docker compose -f compose.cloud.yml up -d
+services:
+  gateway:
+    build: { context: ../.., dockerfile: deploy/docker/Dockerfile }
+    ports: ["8080:8080"]
+    environment:
+      OPENSCI_TOKEN: "${OPENSCI_TOKEN:?set a bearer token}"   # 认证必开
+      OPENSCI_GLOBAL_URL: "http://global:8090"
+      OPENSCI_GLOBAL_TOKEN: "${OPENSCI_GLOBAL_TOKEN:?}"
+      # 生产存储换 Postgres(见 deploy/STORAGE.md);模型走云 API 或自建推理集群
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    deploy: { replicas: 2 }                # 网关无状态,可横向扩展
+    depends_on: [global]
+  global:
+    build: { context: ../.., dockerfile: deploy/docker/Dockerfile.global }
+    ports: ["8090:8090"]
+    environment:
+      OPENSCI_GLOBAL_TOKEN: "${OPENSCI_GLOBAL_TOKEN:?}"
+    volumes: ["f3-global:/data"]      # 生产换托管 Postgres
+volumes: { f3-global: {} }

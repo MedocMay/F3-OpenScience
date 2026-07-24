@@ -1,0 +1,100 @@
+{
+  "_doc": "可达性回归集 —— 专门收集『世界允许但校验器容易误杀』的论断。目标不是让它们全部 pass,而是确保它们不被误判为 fabrication(捏造)。",
+  "run_id": "reach-1",
+  "run_log": "epoch 10 | baseline_acc 0.520 | improved_acc 0.597 | improvement 14.8%\nseed 42",
+  "claims": [
+    {
+      "id": "rc-valid-arxiv",
+      "type": "citation",
+      "arxiv_id": "1706.03762",
+      "title": "Attention Is All You Need",
+      "text": "transformer backbone",
+      "_label": "valid",
+      "_note": "权威登记处可解析 -> 应 pass"
+    },
+    {
+      "id": "rc-valid-doi",
+      "type": "citation",
+      "doi": "10.1038/s41586-021-03819-2",
+      "text": "protein structure prediction",
+      "_label": "valid",
+      "_note": "真实 DOI -> 应 pass"
+    },
+    {
+      "id": "rc-title-only-obscure",
+      "type": "citation",
+      "title": "Zzyxian quasi-lattice thermal transport in non-Euclidean substrates",
+      "text": "prior work on exotic transport",
+      "_label": "valid",
+      "_note": "★ 只有标题、索引未覆盖。世界可能允许(新预印本/非英语/小众会议),校验器看不到。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-derived-number",
+      "type": "number",
+      "value": "0.077",
+      "text": "absolute gain of 0.077 over baseline",
+      "_label": "valid",
+      "_note": "★ 合法推导值:0.597-0.520=0.077。R3 起可由推导式重算 -> 应 pass(kind=derivation)",
+      "_expect": "pass"
+    },
+    {
+      "id": "rc-logged-number",
+      "type": "number",
+      "value": "14.8",
+      "text": "relative improvement of 14.8%",
+      "_label": "valid",
+      "_note": "日志字面命中 -> 应 pass"
+    },
+    {
+      "id": "rc-fake-arxiv",
+      "type": "citation",
+      "arxiv_id": "2099.99999",
+      "text": "fabricated prior work",
+      "_label": "fabricated",
+      "_note": "格式合法但权威登记处确证不存在 -> 必须 reject/fabrication"
+    },
+    {
+      "id": "rc-fake-doi",
+      "type": "citation",
+      "doi": "10.9999/fake.nonexistent.2099",
+      "text": "nonexistent study",
+      "_label": "fabricated",
+      "_note": "DOI 登记处确证不存在 -> 必须 reject/fabrication"
+    },
+    {
+      "id": "rc-contradicted-derivation",
+      "type": "number",
+      "value": "0.999",
+      "derivation": "improved_acc - baseline_acc",
+      "text": "claimed gain contradicted by its own derivation",
+      "_label": "fabricated",
+      "_expect": "reject",
+      "_note": "★ 推导式重算得 0.077 却声称 0.999 —— 计算是权威裁判,确证矛盾 = 捏造"
+    },
+    {
+      "id": "rc-pct-improvement",
+      "type": "number",
+      "value": "12.4",
+      "text": "accuracy improvement of 12.4%",
+      "_label": "valid",
+      "_note": "★ 误拒陷阱:文本同时含 accuracy(概率,上界1)与 improvement(百分比)。武断选前者会把合法的 12.4% 提升判成『物理不可能』—— 把『我误解了』当成『世界不允许』。歧义必须判 unknown,不下断言"
+    },
+    {
+      "id": "rc-impossible-accuracy",
+      "type": "number",
+      "value": "1.35",
+      "text": "final accuracy",
+      "_label": "fabricated",
+      "_expect": "reject",
+      "_note": "★ 语义无歧义时的物理否定:概率不能超过 1。不查任何数据库即可判定"
+    },
+    {
+      "id": "rc-unknown-quantity",
+      "type": "number",
+      "value": "-999.5",
+      "text": "mystery_z coefficient",
+      "_label": "valid",
+      "_note": "★ 语义无法辨识时不得武断否定取值(-999.5 对未知量可能完全合法)。应 unresolved 而非 reject"
+    }
+  ]
+}

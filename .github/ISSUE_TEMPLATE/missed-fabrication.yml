@@ -1,0 +1,25 @@
+name: 漏放报告(最高优先级)
+description: 捏造的内容通过了校验 —— 署名保证被破坏
+title: "[漏放] "
+labels: ["missed-fabrication", "priority:high"]
+body:
+  - type: markdown
+    attributes:
+      value: "**署名保证被破坏。** 请附完整信息以便复现。"
+  - type: textarea
+    id: claim
+    attributes:
+      label: 被放行的捏造内容
+      render: json
+    validations: {required: true}
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 它是捏造的证据
+      description: 例如「该 DOI 在 CrossRef 与 DataCite 均无记录」「该数字与运行日志矛盾」
+    validations: {required: true}
+  - type: textarea
+    id: report
+    attributes:
+      label: verification_report 输出
+      render: json

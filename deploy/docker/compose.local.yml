@@ -1,0 +1,17 @@
+# 本地一体化部署:一台机器,数据全留本地。 用法:docker compose -f compose.local.yml up
+services:
+  gateway:
+    build: { context: ../.., dockerfile: deploy/docker/Dockerfile }
+    ports: ["8080:8080"]
+    environment:
+      OPENSCI_GLOBAL_URL: "http://global:8090"   # 本地 global 也在同 compose 内
+      # 模型:默认本地,数据不出域。改成云 API 就填对应 key。
+      OLLAMA_HOST: "http://host.docker.internal:11434"
+      OPENSCI_MODEL: "ollama:qwen2.5"
+    volumes: ["f3-data:/data"]
+    depends_on: [global]
+  global:
+    build: { context: ../.., dockerfile: deploy/docker/Dockerfile.global }
+    ports: ["8090:8090"]
+    volumes: ["f3-global:/data"]
+volumes: { f3-data: {}, f3-global: {} }

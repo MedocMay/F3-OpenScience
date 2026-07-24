@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-sci-agent/contracts/verification_report.schema.json",
+  "title": "verification_report — CoE Audit Kernel 输出 (署名前 GATE 的唯一判据)",
+  "type": "object",
+  "required": [
+    "run_id",
+    "all_green",
+    "claims",
+    "stats"
+  ],
+  "$defs": {
+    "EvidenceChain": {
+      "type": "object",
+      "required": [
+        "kind",
+        "ref",
+        "fingerprint"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "citation",
+            "log",
+            "derivation",
+            "code+data"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "description": "如 arxiv:2605.20025 | run.log#L42 | derivation:improved_acc-baseline_acc"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{8,64}$"
+        },
+        "derivation": {
+          "type": "string",
+          "description": "可重算的推导式,引用运行日志中的具名量,如 improved_acc - baseline_acc"
+        },
+        "computed_value": {
+          "type": "number",
+          "description": "按推导式重算得到的值"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Claim": {
+      "type": "object",
+      "required": [
+        "id",
+        "text",
+        "type",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "citation",
+            "number",
+            "figure",
+            "mechanism",
+            "domain"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "reject",
+            "unresolved",
+            "manual"
+          ],
+          "description": "pass=证据链完整;reject=确证矛盾(捏造);unresolved=索引未覆盖/无法判定(仍阻断署名,但不塑造生成偏好);manual=需人工复核"
+        },
+        "evidence_chain": {
+          "$ref": "#/$defs/EvidenceChain"
+        },
+        "reason": {
+          "type": "string",
+          "description": "reject/manual 的原因"
+        },
+        "citation_layers": {
+          "type": "object",
+          "description": "type=citation 时,ARC 4 层逐层结果",
+          "properties": {
+            "arxiv_id": {
+              "type": "boolean"
+            },
+            "crossref_datacite": {
+              "type": "boolean"
+            },
+            "semantic_scholar": {
+              "type": "boolean"
+            },
+            "llm_relevance": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "low_relevance": {
+          "type": "boolean",
+          "description": "第4层相关性低(降级=仅标注,不阻断署名)"
+        },
+        "failure_kind": {
+          "type": "string",
+          "enum": [
+            "fabrication",
+            "verification_gap"
+          ],
+          "description": "fabrication=权威登记处确证不存在(可作为生成约束);verification_gap=校验能力/索引覆盖不足(不得作为生成约束)"
+        },
+        "literature_support": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "unestablished_in_index",
+            "unknown"
+          ]
+        },
+        "required_substrate": {
+          "type": "string",
+          "enum": [
+            "citation_or_computational",
+            "computational"
+          ]
+        },
+        "closest_prior_work": {
+          "type": "string"
+        },
+        "prior": {
+          "type": "string",
+          "enum": [
+            "high",
+            "low"
+          ],
+          "description": "生成时的先验高低。low=探索性低先验假设,用于追溯探索预算的实际去向"
+        },
+        "domain": {
+          "type": "string",
+          "description": "领域物理判据的适用域,如 chemistry"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "pass"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "evidence_chain"
+            ],
+            "description": "pass 必须有完整证据链 (0/337 机制本质)"
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "Coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "substrates_queried": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resolved": {
+          "type": "integer"
+        },
+        "unresolved": {
+          "type": "integer"
+        },
+        "coverage_ratio": {
+          "type": "number"
+        },
+        "known_blind_spots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "domain_checks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Novelty": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mechanism_claims": {
+          "type": "integer"
+        },
+        "unestablished_in_index": {
+          "type": "integer"
+        },
+        "signed_on_computational_evidence": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "all_green": {
+      "type": "boolean",
+      "description": "== 无 reject 且 无未决 manual。署名前 GATE 只认此字段。"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Claim"
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "citations_checked",
+        "citations_rejected",
+        "numbers_sourced"
+      ],
+      "properties": {
+        "citations_checked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "citations_rejected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "numbers_sourced": {
+          "type": "string",
+          "description": "如 8/8"
+        },
+        "hallucinated_citations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "目标 0 (对标 ScientistOne 0/337)"
+        }
+      }
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "novelty": {
+      "$ref": "#/$defs/Novelty"
+    }
+  },
+  "additionalProperties": false
+}

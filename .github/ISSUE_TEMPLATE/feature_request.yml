@@ -1,0 +1,21 @@
+name: 功能建议
+description: 提出新能力或改进
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决什么问题
+      description: 请描述场景,而非直接给方案
+    validations: {required: true}
+  - type: textarea
+    id: proposal
+    attributes: {label: 你设想的方案}
+  - type: textarea
+    id: reachability
+    attributes:
+      label: 可达性影响
+      description: |
+        若涉及校验判据,请回答:这个判据的权威来源是什么?当它判断不了的时候会发生什么?
+        (见 docs/REACHABILITY.md)

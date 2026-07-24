@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: "F3-OpenScience: 敢署名且不因此变窄的开源科研 Agent"
+message: "如果你在研究中使用了本软件,请按以下方式引用。"
+type: software
+authors:
+  - family-names: "Mei"
+    given-names: "Junjie"
+    alias: "梅俊杰"
+    website: "https://frontierfirm.fund"
+    email: "maymedoc@gmail.com"
+repository-code: "https://github.com/MedocMay/F3-OpenScience"
+license: Apache-2.0
+version: 0.2.0
+date-released: "2026-07-24"
+keywords:
+  - AI for Science
+  - research agent
+  - citation verification
+  - hallucination detection
+  - reachability
+  - reproducibility
+abstract: >-
+  【研究原型,尚未全面测试;未验证项见 STATUS.md】
+  F3-OpenScience 是一个开源科研 Agent,在产出前进行独立校验:
+  引用经权威登记处四层核验、数字须可重算、论断须挂证据链。
+  其核心贡献是「可达性框架」——将校验失败区分为「确证捏造」与「校验缺口」,
+  仅前者可约束生成器,从而避免校验闭环把系统收窄为只敢处理易校验对象的
+  平庸系统。判据涵盖计算(推导重算)与物理(量纲、质量守恒、价键上限),
+  其中多项完全不依赖文献索引。

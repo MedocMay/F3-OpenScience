@@ -1,0 +1,38 @@
+name: 误拒报告(最高优先级)
+description: 真实存在的东西被判成了捏造 —— 校验器把「我看不到」当成了「世界不允许」
+title: "[误拒] "
+labels: ["false-rejection", "priority:high"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **这是本项目最严重的缺陷类别。** 误拒意味着校验器越权:
+        它把自己的能力边界当成了世界的边界,长期会让系统学会绕开难校验区域。
+  - type: textarea
+    id: claim
+    attributes:
+      label: 被误判的论断
+      description: 完整的 claim(引用 / 数字 / 机制命题 / 领域对象)
+      render: json
+    validations: {required: true}
+  - type: textarea
+    id: report
+    attributes:
+      label: verification_report 输出
+      description: 请附完整报告,特别是 status、failure_kind、citation_layers
+      render: json
+    validations: {required: true}
+  - type: textarea
+    id: why-valid
+    attributes:
+      label: 为什么它其实是有效的
+      description: 例如「这是 2026 年新预印本,OpenAlex 尚未收录」「这是合法推导值」「这是自由基,不饱和度本就是半整数」
+    validations: {required: true}
+  - type: dropdown
+    id: expected
+    attributes:
+      label: 你认为正确的判定应该是
+      options:
+        - pass(证据链成立)
+        - unresolved / verification_gap(判断不了,但不该判为捏造)
+    validations: {required: true}

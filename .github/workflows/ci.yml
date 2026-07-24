@@ -1,0 +1,39 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install jsonschema cryptography hatchling build
+      - name: Validate contracts (JSON Schema)
+        run: |
+          python - <<'PY'
+          import json, glob
+          from jsonschema import Draft202012Validator
+          for f in glob.glob("contracts/*.json"):
+              Draft202012Validator.check_schema(json.load(open(f)))
+              print("ok", f)
+          PY
+      - name: Regression (14 suites, needs network for arXiv/CrossRef/OpenAlex)
+        run: |
+          for t in test_coe test_flywheel test_global test_integration test_pipeline test_sovereignty test_router test_cloud test_sandbox test_reachability test_derivation test_dimensions test_exploration test_domains; do
+            python tests/$t.py
+          done
+      - name: Build wheel
+        run: python -m build --wheel
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: TS typecheck (orchestrator)
+        working-directory: orchestrator-ts
+        run: npm i && npm run typecheck
+      - name: Codegen drift check (generated == contracts)
+        run: |
+          bash scripts/gen-types.sh 2>/dev/null || true
+          git diff --exit-code generated 2>/dev/null || (echo "generated/ out of sync — run scripts/gen-types.sh" && exit 1)

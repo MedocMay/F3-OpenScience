@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"/>
+<title>F3-OpenScience</title>
+<style>
+  :root{--ink:#09141A;--panel:#0E1A20;--gold:#C9A85C;--txt:#E9E5D9;--dim:#9CB1B7;--mute:#6B848C;--line:#22414C}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{background:linear-gradient(180deg,var(--panel),var(--ink));color:var(--txt);
+       font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+  .mark{width:120px;height:120px;border-radius:22px;animation:rise .6s ease-out both}
+  h1{font-size:34px;font-weight:600;letter-spacing:-.01em;margin:26px 0 6px;animation:rise .6s .1s ease-out both}
+  .sub{color:var(--dim);font-size:15px;margin:0;animation:rise .6s .18s ease-out both}
+  .bar{width:240px;height:4px;background:var(--line);border-radius:2px;margin-top:38px;overflow:hidden}
+  .bar i{display:block;height:100%;width:40%;background:var(--gold);border-radius:2px;animation:slide 1.4s ease-in-out infinite}
+  .status{margin-top:16px;font-family:ui-monospace,'Geist Mono',monospace;font-size:12.5px;color:var(--mute)}
+  .foot{position:fixed;bottom:24px;font-family:ui-monospace,monospace;font-size:11.5px;color:#3C565E}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes slide{0%{transform:translateX(-110%)}50%{transform:translateX(150%)}100%{transform:translateX(-110%)}}
+</style></head>
+<body>
+  <img class="mark" src="/favicon.svg" alt=""/>
+  <h1>F3-OpenScience</h1>
+  <p class="sub">可署名的科研工作台</p>
+  <div class="bar"><i></i></div>
+  <div class="status" id="s">正在启动校验内核…</div>
+  <div class="foot">FrontierFirm.Fund · Apache-2.0</div>
+<script>
+  // 冷启动阶段提示(壳拉起 orchestrator + 3 个 sidecar 需要几秒)
+  const steps=["正在启动校验内核…","正在连接经验库…","正在加载模型路由…","就绪"];
+  let i=0; setInterval(()=>{ i=(i+1)%steps.length; document.getElementById('s').textContent=steps[i]; },1100);
+</script>
+</body></html>

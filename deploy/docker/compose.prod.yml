@@ -1,0 +1,68 @@
+# 生产开箱即用:Caddy(自动 TLS)+ 云网关(多租户/BYOK/沙箱)+ global + Postgres + Redis。
+# 用法:
+#   cp ../.env.prod.example ../.env.prod && 编辑填 DOMAIN/密钥
+#   docker compose --env-file ../.env.prod -f compose.prod.yml up -d
+services:
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: "${DOMAIN:-localhost}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [gateway]
+
+  gateway:
+    build: { context: ../.., dockerfile: deploy/docker/Dockerfile }
+    command: ["python3", "deploy/gateway_cloud.py"]      # 多租户 + BYOK 云网关
+    environment:
+      PORT: "8080"
+      OPENSCI_ADMIN_TOKEN: "${OPENSCI_ADMIN_TOKEN:?set admin token}"
+      OPENSCI_MASTER_KEY: "${OPENSCI_MASTER_KEY:?set master key (KMS in prod)}"
+      OPENSCI_DATA_ROOT: "/data/tenants"
+      OPENSCI_GLOBAL_URL: "http://global:8090"
+      OPENSCI_GLOBAL_TOKEN: "${OPENSCI_GLOBAL_TOKEN:?}"
+      OPENSCI_REDIS_URL: "redis://redis:6379/0"           # 会话外置(多副本)
+      OPENSCI_SANDBOX: "local"                             # 网关已在容器内;强隔离 local 沙箱
+      # 若要容器套容器沙箱:改 container 并挂 docker.sock(有权限风险,建议改用 gVisor 运行时)
+    volumes:
+      - tenants-data:/data/tenants
+    depends_on: [global, redis]
+    # 多副本需按 run 粘性路由(见 Caddyfile 注释);默认单副本正确开箱
+    deploy: { replicas: 1 }
+
+  global:
+    build: { context: ../.., dockerfile: deploy/docker/Dockerfile }
+    command: ["python3", "deploy/global_service.py"]
+    environment:
+      PORT: "8090"
+      OPENSCI_GLOBAL_TOKEN: "${OPENSCI_GLOBAL_TOKEN:?}"
+      OPENSCI_GLOBAL_DSN: "postgresql://opensci:${POSTGRES_PASSWORD:?}@postgres:5432/opensci"
+    depends_on: [postgres]
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: opensci
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?}"
+      POSTGRES_DB: opensci
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opensci"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7
+    volumes: ["redis-data:/data"]
+
+volumes:
+  caddy-data: {}
+  caddy-config: {}
+  tenants-data: {}
+  pg-data: {}
+  redis-data: {}

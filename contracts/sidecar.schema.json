@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-sci-agent/contracts/sidecar.schema.json",
+  "title": "Orchestrator <-> sidecars (CoE Kernel / 经验库) JSON-RPC",
+  "$defs": {
+    "Scope": { "type": "string", "enum": ["local", "team", "global"] },
+    "MemoryKind": { "type": "string", "enum": ["verify", "ideation", "experiment"] },
+    "VerifyLesson": {
+      "type": "object",
+      "required": ["kind", "pattern", "scope"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["fake_cite", "unsourced_num", "fig_code_mismatch"] },
+        "pattern": { "type": "string", "description": "抽象后的模式,非原始内容" },
+        "hit_count": { "type": "integer", "minimum": 0 },
+        "repro_count": { "type": "integer", "minimum": 0 },
+        "scope": { "$ref": "#/$defs/Scope" },
+        "share_consent": { "type": "string", "enum": ["none", "team", "global"], "default": "none" },
+        "contributor_fingerprint": { "type": "string" },
+        "reuse_count": { "type": "integer", "minimum": 0 },
+        "decayed_weight": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "retracted"], "default": "active" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "coe.verify": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "required": ["run_id", "draft", "claims", "run_logs_ref"],
+          "properties": {
+            "run_id": { "type": "string" },
+            "draft": { "type": "string" },
+            "claims": { "type": "array", "items": { "type": "object" } },
+            "run_logs_ref": { "type": "string" },
+            "artifacts_ref": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "result": { "$ref": "verification_report.schema.json" }
+      }
+    },
+    "mem.query": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "required": ["kinds", "context", "scope_max"],
+          "properties": {
+            "kinds": { "type": "array", "items": { "$ref": "#/$defs/MemoryKind" } },
+            "context": { "type": "string", "description": "当前阶段上下文,用于相关性检索" },
+            "scope_max": { "$ref": "#/$defs/Scope", "description": "最大可取范围 (global 含 local/team)" }
+          },
+          "additionalProperties": false
+        },
+        "result": { "type": "object", "required": ["lessons"], "properties": { "lessons": { "type": "array", "items": { "$ref": "#/$defs/VerifyLesson" } } } }
+      }
+    },
+    "mem.write": {
+      "type": "object",
+      "properties": {
+        "params": { "type": "object", "required": ["lesson"], "properties": { "lesson": { "$ref": "#/$defs/VerifyLesson" } } },
+        "result": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+      }
+    },
+    "mem.promote": {
+      "type": "object",
+      "description": "晋升 global 必须 consent=true (D6);内部串脱敏 + 质量门(repro>=min)",
+      "properties": {
+        "params": {
+          "type": "object",
+          "required": ["lesson_id", "target_scope", "consent"],
+          "properties": {
+            "lesson_id": { "type": "string" },
+            "target_scope": { "$ref": "#/$defs/Scope" },
+            "consent": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "result": {
+          "type": "object",
+          "required": ["ok"],
+          "properties": {
+            "ok": { "type": "boolean" },
+            "rejected_reason": { "type": "string", "enum": ["no_consent", "below_quality_gate", "desensitize_failed"] }
+          }
+        }
+      }
+    },
+    "mem.revoke": {
+      "type": "object",
+      "properties": {
+        "params": { "type": "object", "required": ["lesson_id"], "properties": { "lesson_id": { "type": "string" } } },
+        "result": { "type": "object", "required": ["ok"], "properties": { "ok": { "type": "boolean" } } }
+      }
+    }
+  },
+  "required": ["coe.verify", "mem.query", "mem.write", "mem.promote", "mem.revoke"]
+}

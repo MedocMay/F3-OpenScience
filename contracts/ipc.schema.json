@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-sci-agent/contracts/ipc.schema.json",
+  "title": "Shell <-> Orchestrator IPC (JSON-RPC 2.0 methods & events)",
+  "description": "桌面壳与 Orchestrator 之间的 JSON-RPC over stdio。methods 为客户端调用；events 为服务端推送(notification)。",
+  "$defs": {
+    "Autonomy": { "type": "integer", "minimum": 0, "maximum": 6, "description": "0=每步确认(协作) … 6=全自动(自主)。MVP 默认 1-2。" },
+    "GateDecision": { "type": "string", "enum": ["approve", "reject", "edit"] },
+    "Scope": { "type": "string", "enum": ["local", "team", "global"] },
+    "MemoryKind": { "type": "string", "enum": ["verify", "ideation", "experiment"] }
+  },
+  "type": "object",
+  "properties": {
+    "methods": {
+      "type": "object",
+      "properties": {
+        "run.start": {
+          "type": "object",
+          "properties": {
+            "params": {
+              "type": "object",
+              "required": ["direction", "autonomy"],
+              "properties": {
+                "direction": { "type": "string", "minLength": 1 },
+                "autonomy": { "$ref": "#/$defs/Autonomy" }
+              },
+              "additionalProperties": false
+            },
+            "result": {
+              "type": "object",
+              "required": ["run_id"],
+              "properties": { "run_id": { "type": "string" } },
+              "additionalProperties": false
+            }
+          }
+        },
+        "gate.resolve": {
+          "type": "object",
+          "properties": {
+            "params": {
+              "type": "object",
+              "required": ["run_id", "gate_id", "decision"],
+              "properties": {
+                "run_id": { "type": "string" },
+                "gate_id": { "type": "string", "enum": ["topic_confirm", "experiment_design", "pre_signoff"] },
+                "decision": { "$ref": "#/$defs/GateDecision" },
+                "payload": { "type": "object", "description": "edit 时携带修改内容" }
+              },
+              "additionalProperties": false
+            },
+            "result": { "type": "object", "required": ["ok"], "properties": { "ok": { "type": "boolean" } } }
+          }
+        },
+        "share.decide": {
+          "type": "object",
+          "properties": {
+            "params": {
+              "type": "object",
+              "required": ["lesson_ids", "scope"],
+              "properties": {
+                "lesson_ids": { "type": "array", "items": { "type": "string" } },
+                "scope": { "$ref": "#/$defs/Scope" }
+              },
+              "additionalProperties": false
+            },
+            "result": { "type": "object", "required": ["ok"], "properties": { "ok": { "type": "boolean" } } }
+          }
+        },
+        "sovereignty.list": {
+          "type": "object",
+          "properties": {
+            "params": { "type": "object", "required": ["user_id"], "properties": { "user_id": { "type": "string" } } },
+            "result": {
+              "type": "object",
+              "required": ["contributions"],
+              "properties": {
+                "contributions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["lesson_id", "scope", "reuse_count"],
+                    "properties": {
+                      "lesson_id": { "type": "string" },
+                      "scope": { "$ref": "#/$defs/Scope" },
+                      "reuse_count": { "type": "integer", "minimum": 0 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sovereignty.revoke": {
+          "type": "object",
+          "properties": {
+            "params": { "type": "object", "required": ["lesson_id"], "properties": { "lesson_id": { "type": "string" } } },
+            "result": { "type": "object", "required": ["ok"], "properties": { "ok": { "type": "boolean" } } }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "object",
+      "description": "服务端 -> 客户端 notification",
+      "properties": {
+        "run.event": {
+          "type": "object",
+          "required": ["run_id", "stage", "type"],
+          "properties": {
+            "run_id": { "type": "string" },
+            "stage": { "type": "string" },
+            "type": { "type": "string", "enum": ["log", "gate", "artifact", "done", "error"] },
+            "data": { "type": "object" }
+          },
+          "additionalProperties": false
+        },
+        "share.prompt": {
+          "type": "object",
+          "required": ["lesson_ids", "kinds"],
+          "properties": {
+            "lesson_ids": { "type": "array", "items": { "type": "string" } },
+            "kinds": { "type": "array", "items": { "$ref": "#/$defs/MemoryKind" } }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "required": ["methods", "events"]
+}
