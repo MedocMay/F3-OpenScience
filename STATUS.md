@@ -68,12 +68,21 @@ The MVP acceptance criteria originally included "3–5 real ML topics producing 
 So figures like "interception curve [1,0,0]" and "0 false-rejection rate" describe performance
 **on our designed test set** and cannot be extrapolated to real research settings.
 
-### 🟡 The desktop app has never been built
+### 🟡 The desktop app builds, but has never been run
 
-- No Rust toolchain in the development environment; **the Tauri shell has never been compiled.**
-- Source, icons, splash screen, DMG background, and the Rust IPC bridge are all in place, but
-  no `.msi` / `.dmg` / `.AppImage` has ever been produced and the GUI has never run.
-- The shell↔orchestrator IPC protocol **was** verified with a Node-based shell simulator.
+*Corrected 2026-07-25. This section previously said the shell had never been compiled;
+that stopped being true once CI built it. 本节此前写「从未编译过」,CI 构建成功后该表述失效,已更正。*
+
+- **Building works.** The v0.2.0 release workflow produced installers on
+  ubuntu-22.04 (`.AppImage` / `.deb`), macos-latest (`.dmg`), and windows-latest (`.msi` / `.exe`).
+- **Running has never been verified.** No one has installed any of those artifacts and
+  opened the window. A successful compile says the Rust and frontend builds are sound;
+  it says nothing about whether the UI works, whether the sidecars spawn correctly on a
+  clean machine, or whether the splash-to-main handoff behaves.
+- macOS `.dmg` files are **unsigned and un-notarised** — Gatekeeper will block them on a
+  normal Mac. Windows installers are unsigned too, so SmartScreen will warn.
+- The shell↔orchestrator IPC protocol was verified with a Node-based shell simulator,
+  not with the real GUI.
 
 ### 🟡 Docker / orchestration layer has never run
 

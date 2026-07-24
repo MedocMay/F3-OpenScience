@@ -33,12 +33,19 @@
   ID 查询返回 True,搜索却返回 0 篇,于是守卫放行、测试失败。
   现拆成两项独立能力探测:`can_judge_citations()` 与 `can_search_literature()`。
 
+### 更正
+- **STATUS.md 的「桌面应用从未编译」已失效**:v0.2.0 的 release 工作流实际在
+  ubuntu / macOS / Windows 上都构建成功了。已改为「能构建,但从未运行过」,
+  并补充说明安装包未签名(Gatekeeper / SmartScreen 会拦)。
+  一份声称「如实列出未验证项」的文档带着过期断言,正是本项目要防的那类问题。
+
 ### 变更
 - **Release 工作流实际会创建 Release 了**:原来只用 `upload-artifact`,产物存在 Actions
   运行记录里(90 天过期),**不会附到 Release 上**。现新增 `release` job,收集全部产物
   并通过 `softprops/action-gh-release` 发布,附带双语说明与免责声明。
-- 桌面构建标记 `continue-on-error` —— Tauri 壳从未编译过,失败不应阻塞 Release,
-  Python 包与源码归档照常发布。
+- 桌面构建标记 `continue-on-error` —— 当时 Tauri 壳从未编译过,失败不应阻塞 Release。
+  (后续事实:v0.2.0 的 release 工作流三平台**全部构建成功**,见上方「更正」。
+  `continue-on-error` 保留,因为构建仍可能因签名、依赖或平台差异失败。)
 - 移除 `push: false` 的 Docker job(构建完即丢弃,多架构 QEMU 编译还很慢)。
 - 新增 `docs/assets/social-preview.png`(1280×640)与其生成器,用于 GitHub 社交预览。
 - CI 中 `actions/*` 升级到最新大版本,消除 Node.js 20 弃用警告。

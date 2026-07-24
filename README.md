@@ -34,16 +34,19 @@
 > **never produced an actual research result** — the development environment had no model API
 > credentials, and the generation stage of the pipeline is templated. The verification layer,
 > the flywheel, and the reachability mechanisms are all empirically tested; but "an AI actually
-> writing a research draft" is itself unverified. The desktop app has never been compiled.
-> The Docker orchestration layer has never been run. Windows / macOS scripts were only statically
-> checked. Security has not been independently audited. Scale and performance are untested.
+> writing a research draft" is itself unverified. The desktop app builds in CI but has never
+> been run — nobody has installed an artifact and opened the window; the macOS/Windows
+> installers are unsigned. The Docker orchestration layer has never been run.
+> Windows / macOS install scripts were only statically checked. Security has not been
+> independently audited. Scale and performance are untested.
 >
 > **本项目在资源受限条件下开发,尚未经过全面测试,是可运行的研究原型,不是生产就绪的产品。**
 >
 > 特别地:**从未用真实 LLM 端到端跑过**,也**从未产出过一篇真实研究成果** ——
 > 开发环境无模型 API 凭据,Pipeline 的生成环节是模板化的。校验层、飞轮、可达性机制都经过实测;
-> 但「AI 真的写出一篇研究草稿」这件事本身没有被验证。桌面应用从未编译过,Docker 编排层从未运行过,
-> Windows / macOS 脚本仅静态校验,安全未经独立审计,规模与性能完全未测。
+> 但「AI 真的写出一篇研究草稿」这件事本身没有被验证。桌面应用能在 CI 里构建,但**从未运行过** ——
+> 没有人装过安装包、打开过窗口,而且 macOS/Windows 安装包均未签名。Docker 编排层从未运行过,
+> Windows / macOS 安装脚本仅静态校验,安全未经独立审计,规模与性能完全未测。
 >
 > **完整验证边界见 [STATUS.md](STATUS.md) —— 请务必阅读后再决定如何使用。**
 
