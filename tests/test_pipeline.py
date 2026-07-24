@@ -2,12 +2,13 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, skip_if_no_search
 from pipeline.pipeline import run_pipeline
 from coe_kernel import run_verify
 
 def test_real_literature_and_execution():
-    if skip_if_offline(): return
+    # needs the SEARCH endpoint, not the ID endpoint · 需要搜索端点而非 ID 端点
+    if skip_if_no_search("test_real_literature_and_execution"): return
     r = run_pipeline("few-shot reinforcement learning battery health", injected=[])
     assert r["n_papers"] >= 1                         # 真实检索到论文
     assert "improvement" in r["run_log"]              # 真实沙箱执行出日志
@@ -21,7 +22,7 @@ def test_real_literature_and_execution():
     assert rep["stats"]["hallucinated_citations"] >= 1
 
 def test_guard_drops_hallucination():
-    if skip_if_offline(): return
+    if skip_if_no_search("test_guard_drops_hallucination"): return
     r = run_pipeline("graph neural networks molecules", injected=[{"kind": "fake_cite", "pattern": "NONEXISTENT_CITATION"}])
     rep = run_verify("m5g", r["draft"], r["claims"], r["run_log"])
     assert rep["stats"]["hallucinated_citations"] == 0        # guard 开:幻觉在生成前被丢弃

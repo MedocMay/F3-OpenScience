@@ -1,82 +1,114 @@
-"""External-API capability guard · 外部 API 能力守卫
+"""External-API capability guards · 外部 API 能力守卫
 
-Several suites verify against live academic APIs (arXiv / CrossRef / OpenAlex).
-CI runners are frequently rate-limited by these services.
+Several suites depend on live academic APIs. CI runners are frequently
+rate-limited by them. 有几个套件依赖真实学术 API,CI runner 常被限流。
 
-有几个套件要打真实学术 API。CI runner 经常被这些站点限流。
+★ Probe the EXACT capability a test uses — not an adjacent one.
+★ 探测测试**实际使用**的那一项能力,而不是相邻的一项。
 
-★ Probe the CAPABILITY the tests need, not merely connectivity.
-★ 探测测试真正需要的**能力**,而不只是连通性。
+  This has bitten us three times, each time the same way:
 
-  A naive "can I reach arxiv.org?" probe is not enough: a generic query may
-  succeed while a lookup of a *nonexistent* ID gets throttled (403/429) and
-  degrades to "unknown". The verifier then correctly reports `manual` rather
-  than `reject` — and a test asserting `reject` fails for reasons unrelated
-  to the code.
+    1st  probed "can I reach arxiv.org?" — but a generic query can succeed
+         while a *nonexistent-ID* lookup is throttled and degrades to unknown.
+    2nd  probed check_arxiv(id) — but the ID endpoint (`id_list`) and the
+         search endpoint (`search_query`) fail independently under rate limits.
+         ID lookup returned True while search returned zero papers.
+    3rd  ...is what this file is trying to prevent.
 
-  简单探测「能否连上 arxiv」是不够的:普通查询可能成功,而查一个**不存在**的 ID
-  却被限流(403/429)、降级为「未知」。此时校验器正确地报 `manual` 而非 `reject`,
-  于是断言 `reject` 的测试因与代码无关的原因失败。
+  这个坑我们踩了三次,每次形态相同:
+    第一次 探测「能否连上 arxiv」—— 但普通查询成功,查**不存在的 ID** 却被限流降级为未知
+    第二次 探测 check_arxiv(id) —— 但 ID 端点(id_list)与搜索端点(search_query)
+           在限流下独立失效。ID 查询返回 True,搜索却返回 0 篇。
+    第三次 …正是这个文件想避免的
 
-  So we probe both directions: a known-real ID must resolve, and a known-fake
-  ID must be definitively denied. Only then are citation assertions meaningful.
+  The lesson is the project's own thesis applied to its test harness:
+  treating "I can do X" as "I can do Y" is the same error as treating
+  "I cannot find it" as "it does not exist."
 
-  因此我们双向探测:已知真 ID 必须解析成功,已知假 ID 必须被明确否定。
-  两者都成立,引用类断言才有意义。
+  教训就是本项目自身论点在测试装置上的应用:
+  把「我能做 X」当成「我能做 Y」,和把「我查不到」当成「它不存在」,是同一个错误。
 
-★ The right response is to SKIP, never to weaken the assertion.
-★ 正确做法是**跳过**,绝不是放宽断言。
-
-  Turning `assert status == "reject"` into `assert status in ("reject","manual")`
-  would let a genuine missed-fabrication bug pass unnoticed.
-
-  把断言放宽会让「真的漏放了捏造引用」这种回归悄悄通过。
-
-This mirrors the project's own principle: unreachable ≠ nonexistent.
-这与项目自身原则同构:连不上 ≠ 不存在。
+★ SKIP, never weaken the assertion. 跳过,绝不放宽断言。
+  Turning `assert status == "reject"` into `in ("reject","manual")` would let a
+  genuine missed-fabrication bug pass unnoticed.
 """
 from __future__ import annotations
 import os
 
-# A paper that certainly exists (Attention Is All You Need) and an ID that
-# certainly does not. 一个确定存在、一个确定不存在。
-_REAL_ID = "1706.03762"
-_FAKE_ID = "2099.99999"
-
-_cached: bool | None = None
+_REAL_ID = "1706.03762"     # certainly exists · 确定存在
+_FAKE_ID = "2099.99999"     # certainly does not · 确定不存在
+_cache: dict[str, bool] = {}
 
 
-def net_ok() -> bool:
-    """Can we actually distinguish a real citation from a fabricated one?
+def _forced_off() -> bool:
+    return os.environ.get("OPENSCI_SKIP_NETWORK_TESTS") == "1"
 
-    我们真的能区分真引用与捏造引用吗?
 
-    Returns False when the academic APIs are unreachable OR rate-limited to the
-    point where a nonexistent ID no longer yields a definitive denial.
+def can_judge_citations() -> bool:
+    """Can we tell a real citation from a fabricated one?
+    我们能区分真引用与捏造引用吗?
+
+    Requires BOTH directions: a known-real ID must resolve, and a known-fake ID
+    must be *definitively denied* (False, not None/unknown).
+    需要双向成立:真 ID 必须解析成功,假 ID 必须被**明确否定**。
     """
-    global _cached
-    if _cached is not None:
-        return _cached
-    if os.environ.get("OPENSCI_SKIP_NETWORK_TESTS") == "1":
-        _cached = False
-        return _cached
+    if "cite" in _cache:
+        return _cache["cite"]
+    if _forced_off():
+        _cache["cite"] = False
+        return False
     try:
         import sys, pathlib
         sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
         from coe_kernel import apis
         real_ok, _ = apis.check_arxiv(_REAL_ID)
         fake_ok, _ = apis.check_arxiv(_FAKE_ID)
-        # real must resolve True; fake must be a definitive False (not None/unknown)
-        _cached = (real_ok is True) and (fake_ok is False)
+        _cache["cite"] = (real_ok is True) and (fake_ok is False)
     except Exception:
-        _cached = False
-    return _cached
+        _cache["cite"] = False
+    return _cache["cite"]
+
+
+def can_search_literature() -> bool:
+    """Can we retrieve papers by topic?  我们能按主题检索到论文吗?
+
+    This is a DIFFERENT capability from can_judge_citations(). arXiv's
+    `search_query` endpoint and its `id_list` endpoint fail independently under
+    rate limiting — an ID lookup can succeed while a search returns nothing.
+    这与 can_judge_citations() 是**不同的**能力。arXiv 的 search_query 与
+    id_list 两个端点在限流下独立失效 —— ID 查得到,搜索却可能返回空。
+    """
+    if "search" in _cache:
+        return _cache["search"]
+    if _forced_off():
+        _cache["search"] = False
+        return False
+    try:
+        import sys, pathlib
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+        from pipeline.pipeline import literature
+        _cache["search"] = len(literature("neural networks", n=2)) >= 1
+    except Exception:
+        _cache["search"] = False
+    return _cache["search"]
+
+
+def net_ok() -> bool:
+    """Back-compat alias for citation judgement. 向后兼容别名。"""
+    return can_judge_citations()
+
+
+def _notice(name: str, what: str) -> bool:
+    print(f"  ⚠️  {what} unavailable (rate-limited or offline) — skipping "
+          f"{name or 'test'} (NOT a regression · 非回归)")
+    return True
 
 
 def skip_if_offline(name: str = "") -> bool:
-    """Return True (and print a notice) when the suite should be skipped."""
-    if net_ok():
-        return False
-    print(f"  ⚠️  Academic APIs unreachable or rate-limited — skipping "
-          f"{name or 'network-dependent test'} (NOT a regression · 非回归)")
-    return True
+    """Skip when citation judgement is unavailable. 无法判定引用时跳过。"""
+    return False if can_judge_citations() else _notice(name, "Citation verification")
+
+
+def skip_if_no_search(name: str = "") -> bool:
+    """Skip when literature search is unavailable. 无法检索文献时跳过。"""
+    return False if can_search_literature() else _notice(name, "Literature search")

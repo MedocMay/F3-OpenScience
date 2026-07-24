@@ -2,9 +2,13 @@
 断言飞轮跨 IPC 生效:RUN1 blocked -> RUN2 signed。"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "orchestrator"))
+sys.path.insert(0, os.path.dirname(__file__))
 from orchestrator import Orchestrator
+from _netguard import skip_if_no_search
 
 def test_multiprocess_flywheel():
+    # the full chain runs literature search · 完整链路会走文献检索
+    if skip_if_no_search("test_multiprocess_flywheel"): return
     db = "/tmp/test_orch.db"
     if os.path.exists(db): os.remove(db)
     logs = []

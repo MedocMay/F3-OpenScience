@@ -27,6 +27,11 @@
   现改为**双向探测**:已知真 ID 必须解析成功 **且** 已知假 ID 必须被明确否定,
   两者都成立才执行引用类断言。
 - CI 改为跑完全部 14 个套件再统一报失败,便于一次看清所有问题。
+- **守卫探测的端点与测试使用的端点不同**(第三次同形错误):守卫探测
+  `check_arxiv(id)`(走 `id_list` 端点),而 `test_pipeline` / `test_integration`
+  依赖 `literature(query)`(走 `search_query` 端点)。两个端点在限流下**独立失效** ——
+  ID 查询返回 True,搜索却返回 0 篇,于是守卫放行、测试失败。
+  现拆成两项独立能力探测:`can_judge_citations()` 与 `can_search_literature()`。
 
 ### 变更
 - **Release 工作流实际会创建 Release 了**:原来只用 `upload-artifact`,产物存在 Actions
