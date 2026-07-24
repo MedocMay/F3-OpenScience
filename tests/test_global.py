@@ -1,6 +1,8 @@
 """M4 回归:跨用户 global 聚合 + 脱敏 + 质量门 + 撤回/投票(D3+D6)。"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
+from _netguard import skip_if_offline
 from memory import ExperienceStore
 from memory.global_store import GlobalMemory
 

@@ -4,8 +4,8 @@ jobs:
   python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - run: pip install jsonschema cryptography hatchling build
       - name: Validate contracts (JSON Schema)
@@ -17,7 +17,13 @@ jobs:
               Draft202012Validator.check_schema(json.load(open(f)))
               print("ok", f)
           PY
-      - name: Regression (14 suites, needs network for arXiv/CrossRef/OpenAlex)
+      - name: Regression (14 suites)
+        # Suites that hit live academic APIs (arXiv / CrossRef / OpenAlex) skip
+        # themselves when those services are unreachable — CI runners are often
+        # rate-limited. Skipping is correct; weakening assertions would hide
+        # real regressions. See tests/_netguard.py.
+        # 打真实学术 API 的套件在服务不可达时会自行跳过 —— CI 常被限流。
+        # 跳过是对的;放宽断言会掩盖真实回归。见 tests/_netguard.py。
         run: |
           for t in test_coe test_flywheel test_global test_integration test_pipeline test_sovereignty test_router test_cloud test_sandbox test_reachability test_derivation test_dimensions test_exploration test_domains; do
             python tests/$t.py
@@ -27,8 +33,8 @@ jobs:
   typescript:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: "22" }
       - name: TS typecheck (orchestrator)
         working-directory: orchestrator-ts

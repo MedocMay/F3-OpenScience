@@ -3,8 +3,11 @@
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from coe_kernel import run_verify
+from _netguard import skip_if_offline
 
 def test_golden():
+    if skip_if_offline("test_golden"):
+        return
     case = json.load(open(os.path.join(os.path.dirname(__file__), "golden", "draft_case.json")))
     rep = run_verify(case["run_id"], case["draft"], case["claims"], case["run_log"])
     by = {c["id"]: c["status"] for c in rep["claims"]}

@@ -1,6 +1,8 @@
 """M2 回归:飞轮闭环 + 经验库治理机制(质量门 / consent / 撤回)。"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
+from _netguard import skip_if_offline
 from memory import ExperienceStore
 
 FAKE_REPORT = {"claims": [
@@ -14,6 +16,7 @@ def _store(tmp):
     return ExperienceStore(p)
 
 def test_writeback_and_inject():
+    if skip_if_offline("test_writeback_and_inject"): return
     s=_store("m2a")
     ids=s.write_from_report(FAKE_REPORT, "userA")
     assert len(ids)==2                              # fake_cite + unsourced_num 两条

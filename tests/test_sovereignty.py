@@ -1,6 +1,8 @@
 """M6 回归:可复现包(T7)+ 用户主权面板(T8)。"""
 import sys, os, json, hashlib, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
+from _netguard import skip_if_offline
 from memory import ExperienceStore
 from memory.global_store import GlobalMemory
 from orchestrator.packager import build_package

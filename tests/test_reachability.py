@@ -6,16 +6,10 @@
 """
 import sys, os, json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
+from _netguard import skip_if_offline
 from coe_kernel import run_verify
 from coe_kernel.metrics import reachability_metrics
-
-def _net_ok():
-    import urllib.request
-    try:
-        urllib.request.urlopen("http://export.arxiv.org/api/query?search_query=all:test&max_results=1", timeout=25).read()
-        return True
-    except Exception:
-        return False
 
 def _run():
     case = json.load(open(os.path.join(os.path.dirname(__file__), "golden", "reachability_case.json")))
@@ -25,7 +19,7 @@ def _run():
 
 def test_index_gap_is_not_fabrication():
     """★ 核心:索引未覆盖的真实引用,不得被判为捏造。"""
-    if not _net_ok(): print("  ⚠ 网络不可达,跳过"); return
+    if skip_if_offline(): return
     rep, _ = _run()
     by = {c["id"]: c for c in rep["claims"]}
     c = by["rc-title-only-obscure"]
@@ -53,7 +47,7 @@ def test_contradicted_derivation_is_fabrication():
 
 def test_real_fabrication_still_caught():
     """反向保证:真捏造必须仍被 reject —— 放宽语义不等于放松署名门槛。"""
-    if not _net_ok(): print("  ⚠ 网络不可达,跳过"); return
+    if skip_if_offline(): return
     rep, _ = _run()
     by = {c["id"]: c for c in rep["claims"]}
     for cid in ("rc-fake-arxiv", "rc-fake-doi"):
@@ -67,7 +61,7 @@ def test_signing_gate_unchanged():
 
 def test_metrics_expose_narrowing():
     """度量必须能报出误拒率与覆盖率。"""
-    if not _net_ok(): print("  ⚠ 网络不可达,跳过"); return
+    if skip_if_offline(): return
     rep, labels = _run()
     m = reachability_metrics([rep], labels)
     assert m["false_rejection_rate"] == 0.0, f"存在误拒:{m['false_rejections']}"

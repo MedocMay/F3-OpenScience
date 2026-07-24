@@ -4,6 +4,18 @@
 
 ---
 
+## [Unreleased]
+
+### 修复
+- **联网测试在 CI 上误判为失败**:`test_coe` 等 6 个套件会打真实学术 API,而 CI runner 常被
+  arXiv / CrossRef 限流。此前只有 2 个套件带网络守卫,其余在 API 不可达时会因
+  `assert status == "reject"` 失败 —— 但此时校验器返回 `manual`(连不上 ≠ 不存在)**是正确行为**,
+  是测试假设了网络一定可用。现统一到 `tests/_netguard.py`,不可达时跳过而非失败。
+  可用 `OPENSCI_SKIP_NETWORK_TESTS=1` 在本地复现离线场景。
+- CI 中 `actions/*` 升级到最新大版本,消除 Node.js 20 弃用警告。
+
+---
+
 ## [0.2.0] — 可达性框架(Reachability)
 
 **主题:敢署名,且不因此变窄。**

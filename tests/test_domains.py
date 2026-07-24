@@ -1,6 +1,8 @@
 """领域物理可达性(R6)回归 —— 由领域规律裁决,与任何数据库无关。"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
+from _netguard import skip_if_offline
 from coe_kernel.domains import chemistry as ch, available_domains
 from coe_kernel import run_verify
 
@@ -45,6 +47,7 @@ def test_extraction_from_prose():
 
 def test_end_to_end_domain_gate():
     """物理不可能 -> fabrication -> 阻断署名。"""
+    if skip_if_offline("test_end_to_end_domain_gate"): return
     d = "The unbalanced step H2 + O2 -> H2O and the species C2H8 were considered."
     r = run_verify("d1", d, [], "", domain="chemistry")
     doms = [c for c in r["claims"] if c["type"] == "domain"]

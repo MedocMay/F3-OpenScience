@@ -85,9 +85,17 @@ make test                                    # all 14 suites
 python3 tests/test_reachability.py           # reachability regression (mandatory when changing decision logic)
 ```
 
-Some suites need network access (live arXiv / CrossRef / OpenAlex). They include reachability
-guards: when an external API is unreachable they skip rather than fail.
-**Please do not "fix" network flakiness by loosening assertions.**
+Some suites need network access (live arXiv / CrossRef / OpenAlex). They use the shared
+guard in `tests/_netguard.py`: when an external API is unreachable they **skip** rather than fail.
+
+**Never "fix" network flakiness by loosening assertions.** Turning
+`assert status == "reject"` into `assert status in ("reject", "manual")` would let a genuine
+missed-fabrication bug pass unnoticed. Skip the test instead.
+
+To simulate an offline CI runner locally:
+```bash
+OPENSCI_SKIP_NETWORK_TESTS=1 make test
+```
 
 ## Changing contracts
 
