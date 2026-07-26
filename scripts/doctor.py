@@ -140,6 +140,15 @@ def check_imports(r: Report) -> None:
         )
 
     try:
+        import jsonschema  # noqa: F401
+
+        r.ok("jsonschema (test extra · 测试依赖)")
+    except ImportError:
+        r.fail("jsonschema (test extra · 测试依赖)", "not installed · 未安装",
+               fix=["make test 会在 test_coe 崩掉,而那正是覆盖校验内核的套件。",
+                    "", "  pip install -e '.[test]'"])
+
+    try:
         import rdkit  # noqa: F401
 
         r.ok("rdkit (optional · 可选)", "valence checks available · 价键判据可用")
