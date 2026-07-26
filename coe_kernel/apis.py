@@ -74,7 +74,7 @@ def check_arxiv(arxiv_id: str):
     if not m:
         return False, None
     aid = m.group(1)
-    data, src = _get(f"http://export.arxiv.org/api/query?id_list={aid}", "arxiv")
+    data, src = _get(f"https://export.arxiv.org/api/query?id_list={aid}", "arxiv")
     if not data:
         return None, None  # 未知(熔断/网络)——不等于不存在
     try:
