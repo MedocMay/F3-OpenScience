@@ -112,6 +112,10 @@ def pattern_of(claim: dict, status: str, failure_kind: str | None) -> str | None
     """
     if status == "pass":
         return None
+    if status == "manual":
+        # transport failure: no conclusion at all. Not a claim about the world,
+        # not an index gap. 传输失败:根本没结论。既非世界判断,也非索引缺口。
+        return None
     return "NONEXISTENT_CITATION" if failure_kind == "fabrication" else "UNINDEXED_CITATION"
 
 
@@ -164,6 +168,8 @@ def run_arm(arm_key: str, pool: list[dict], rounds: int, k: int,
                 if c["id"] in valid_ids: passed_valid.add(c["id"])
                 if c["id"] in hard_ids: passed_hard.add(c["id"])
                 continue
+            if status == "manual":
+                continue          # unreachable · 不可触达,不构成观测
             intercepted += 1
             pat = pattern_of(c, status, fk)
             if pat is None:
@@ -204,8 +210,11 @@ def main():
                          "With nothing valid that is hard to verify, ARM A has nothing to "
                          "lose and must NOT narrow. If it still does, the harness is broken. "
                          "对照条件:剔除全部 valid_hard。此时 A 组无可失去,不应收窄。")
-    ap.add_argument("--out", default=os.path.join(HERE, "results.csv"))
+    ap.add_argument("--out", default=None)
     args = ap.parse_args()
+    if args.out is None:
+        args.out = os.path.join(HERE, "results_control.csv" if args.control
+                                else "results_main.csv")
 
     pool = json.load(open(os.path.join(HERE, "claim_pool.json")))["claims"]
     if args.control:
@@ -227,8 +236,25 @@ def main():
 
     hard_unresolved = obs[("valid_hard", "unresolved")]
     hard_manual = obs[("valid_hard", "manual")]
-    eligible = args.control or hard_unresolved >= 3
+    fab_reject = obs[("fabricated", "reject")]
+    fab_total = sum(n for (c, _), n in obs.items() if c == "fabricated")
+    easy_unres = obs[("valid_easy", "unresolved")]
+    problems = []
+    if not args.control and hard_unresolved < 3:
+        problems.append(f"valid_hard->unresolved x{hard_unresolved} (need >=3), "
+                        f"manual x{hard_manual}: transport failure, not index gap. "
+                        f"\u4f20\u8f93\u5931\u8d25\u975e\u7d22\u5f15\u7f3a\u53e3")
+    if fab_reject < fab_total:
+        problems.append(f"fabricated->reject x{fab_reject} of {fab_total}: the rest "
+                        f"were never confirmed as fabrication. "
+                        f"\u5176\u4f59\u637f\u9020\u672a\u88ab\u786e\u8ba4")
+    if easy_unres:
+        problems.append(f"valid_easy->unresolved x{easy_unres}: flaky index or wrong "
+                        f"pool label. \u7d22\u5f15\u4e0d\u7a33\u6216\u6c60\u5b50\u6807\u9519")
+    eligible = not problems
     if not eligible:
+        for _p in problems:
+            print(f"      . {_p}")
         print(f"\n  ⚠️  ENVIRONMENT NOT ELIGIBLE · 环境不适格")
         print(f"      valid_hard → unresolved ×{hard_unresolved}, manual ×{hard_manual}")
         print("      'manual' means the verifier could not reach a conclusion at all —")
@@ -268,8 +294,9 @@ def main():
     d_reach_b = b[-1]["reachability"] - b[0]["reachability"]
     # interception is compared between arms at steady state, not over time
     # 拦截率在稳态下做**组间**比较,而非随时间比较
-    d_int_a = a[-1]["interception_rate"]
-    d_int_b = b[-1]["interception_rate"]
+    _t = max(1, (len(a) - 1) // 2)          # trailing half · 后半程均值
+    d_int_a = sum(h["interception_rate"] for h in a[-_t:]) / _t
+    d_int_b = sum(h["interception_rate"] for h in b[-_t:]) / _t
 
     print("═" * 74)
     print("  RESULT · 结果" + ("" if eligible else "   ⚠ NOT ELIGIBLE · 不适格"))
@@ -283,7 +310,12 @@ def main():
     narrowed = d_reach_a < -0.01 and d_reach_b >= -0.01
     invisible = abs(d_int_a - d_int_b) < 0.05
 
-    if narrowed:
+    if narrowed and args.control:
+        print("  ✗ HARNESS FAILURE · 装置失败")
+        print("    ARM A narrowed in the CONTROL condition - nothing to lose, yet it")
+        print("    lost. Do NOT report the main result from this run.")
+        print("    对照条件下 A 组仍收窄。本次主结果不可采信。")
+    elif narrowed:
         print("  ✓ ARM A lost reachable space; ARM B did not.")
         print("    A 组丢失了可达空间,B 组没有。")
         if invisible:
