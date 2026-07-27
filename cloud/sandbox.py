@@ -3,7 +3,7 @@
 容器后端(生产):docker/gVisor,--network none + 内存/CPU 限制 + 只读根 + 非特权用户。
 按 OPENSCI_SANDBOX 选择(local | container)。"""
 from __future__ import annotations
-import os, sys, subprocess, tempfile, shutil
+import os, sys, json, subprocess, tempfile, shutil
 IS_WIN = os.name == "nt"
 if not IS_WIN:
     import resource
@@ -24,8 +24,12 @@ def _safe_env() -> dict:
     return env
 
 class SandboxResult:
-    def __init__(self, ok, stdout, stderr, killed_reason=None):
+    def __init__(self, ok, stdout, stderr, killed_reason=None, limits_unavailable=None):
         self.ok, self.stdout, self.stderr, self.killed_reason = ok, stdout, stderr, killed_reason
+        # Which resource limits the platform refused. Non-empty means the isolation
+        # is weaker than advertised — say so rather than let the caller assume.
+        # 平台拒绝设置的资源限制。非空即表示隔离弱于标称 —— 如实说明,不让调用方误以为完整。
+        self.limits_unavailable = limits_unavailable or {}
 
 class LocalSandbox:
     """hardened subprocess。默认限制:CPU 10s、内存 512MB、进程 64、文件 50MB。"""
@@ -33,14 +37,64 @@ class LocalSandbox:
         self.cpu_s, self.mem_mb, self.nproc, self.fsize_mb = cpu_s, mem_mb, nproc, fsize_mb
         self.timeout = timeout
         self.isolate_net = isolate_net and shutil.which("unshare") is not None
+        self._unsupported = None      # lazily probed by unsupported_limits()
+
+    def _limit_spec(self):
+        return [("RLIMIT_CPU",   (self.cpu_s, self.cpu_s)),                  # CPU 时间
+                ("RLIMIT_AS",    (self.mem_mb*1024*1024,)*2),                # 内存
+                ("RLIMIT_NPROC", (self.nproc, self.nproc)),                  # 防 fork bomb
+                ("RLIMIT_FSIZE", (self.fsize_mb*1024*1024,)*2)]              # 文件大小
+
+    def unsupported_limits(self) -> dict:
+        """Limits this platform refuses, as {name: reason}. Empty = full isolation.
+
+        本平台拒绝设置的限制,{名称: 原因}。空字典 = 完整隔离。
+
+        A limit the platform will not set is a capability gap, not a fatal error —
+        the same distinction this project draws between "cannot verify" and "does
+        not exist". Previously RLIMIT_AS raised ValueError on macOS, _preexec died
+        with it, and *every* sandbox run failed: the boundary was not weakened, it
+        was absent. Now the gap is reported instead of taking the sandbox down.
+
+        平台设不上的限制是能力缺口,不是致命错误 —— 与本项目区分「核验不了」和
+        「不存在」是同一条线。此前 RLIMIT_AS 在 macOS 上抛 ValueError,_preexec
+        随之中断,**每一次**沙箱执行都失败:边界不是被削弱,而是根本不存在。
+        现在缺口被如实报告,而不是让沙箱整个瘫痪。
+
+        Probed in a throwaway child so a failed probe cannot damage this process's
+        own limits (lowering a hard limit is irreversible for non-root).
+        在一次性子进程里探测:探测失败不会损伤本进程自己的限制(非 root 降低硬限
+        不可逆)。
+        """
+        if IS_WIN:
+            return {n: "Windows has no setrlimit · Windows 无 setrlimit"
+                    for n, _ in self._limit_spec()}
+        if self._unsupported is None:
+            src = ("import json,resource as R,sys\n"
+                   "o={}\n"
+                   "for n,v in json.loads(sys.argv[1]):\n"
+                   "    try: R.setrlimit(getattr(R,n),tuple(v)); o[n]=None\n"
+                   "    except Exception as e: o[n]='%s: %s'%(type(e).__name__,e)\n"
+                   "print(json.dumps(o))")
+            spec = json.dumps([[n, list(v)] for n, v in self._limit_spec()])
+            try:
+                p = subprocess.run([sys.executable, "-c", src, spec],
+                                   capture_output=True, text=True, timeout=15)
+                probe = json.loads(p.stdout)
+            except Exception as e:
+                probe = {n: f"probe failed · 探测失败: {type(e).__name__}"
+                         for n, _ in self._limit_spec()}
+            self._unsupported = {n: r for n, r in probe.items() if r}
+        return self._unsupported
 
     def _preexec(self):
         # 仅 POSIX。Windows 无 setrlimit,依赖超时 + 环境擦除 + jail(见 run())
         os.setsid()                                                   # 独立进程组,超时可整组杀
-        resource.setrlimit(resource.RLIMIT_CPU, (self.cpu_s, self.cpu_s))
-        resource.setrlimit(resource.RLIMIT_AS, (self.mem_mb*1024*1024,)*2)      # 内存
-        resource.setrlimit(resource.RLIMIT_NPROC, (self.nproc, self.nproc))     # 防 fork bomb
-        resource.setrlimit(resource.RLIMIT_FSIZE, (self.fsize_mb*1024*1024,)*2) # 文件大小
+        for name, val in self._limit_spec():
+            try:
+                resource.setrlimit(getattr(resource, name), val)
+            except (ValueError, OSError):
+                pass          # 平台不支持 —— 由 unsupported_limits() 如实报告,不静默假装已设
 
     def run(self, code: str) -> SandboxResult:
         jail = tempfile.mkdtemp(prefix="sbx_")
@@ -62,9 +116,10 @@ class LocalSandbox:
                 p = subprocess.run(argv, cwd=jail, env=env, capture_output=True, text=True,
                                    timeout=self.timeout, **kw)
                 return SandboxResult(p.returncode == 0, p.stdout, p.stderr,
-                                     None if p.returncode == 0 else f"exit={p.returncode}")
+                                     None if p.returncode == 0 else f"exit={p.returncode}",
+                                     self.unsupported_limits())
             except subprocess.TimeoutExpired:
-                return SandboxResult(False, "", "", "timeout")
+                return SandboxResult(False, "", "", "timeout", self.unsupported_limits())
         finally:
             shutil.rmtree(jail, ignore_errors=True)
 
