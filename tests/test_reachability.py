@@ -7,7 +7,7 @@
 import sys, os, json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, run_suite
 from coe_kernel import run_verify
 from coe_kernel.metrics import reachability_metrics
 
@@ -71,9 +71,7 @@ def test_metrics_expose_narrowing():
           f"漏放率={m['missed_fabrication_rate']} 失败构成={m['by_failure_kind']}")
 
 if __name__ == "__main__":
-    for t in [test_index_gap_is_not_fabrication, test_derived_number_now_verifiable,
-              test_contradicted_derivation_is_fabrication,
-              test_real_fabrication_still_caught, test_signing_gate_unchanged,
-              test_metrics_expose_narrowing]:
-        t(); print(f"✅ {t.__name__}")
-    print("\n可达性回归 PASSED")
+    run_suite([test_index_gap_is_not_fabrication, test_derived_number_now_verifiable,
+               test_contradicted_derivation_is_fabrication,
+               test_real_fabrication_still_caught, test_signing_gate_unchanged,
+               test_metrics_expose_narrowing], "可达性回归")

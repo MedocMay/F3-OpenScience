@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, run_suite
 from coe_kernel.domains import chemistry as ch, available_domains
 from coe_kernel import run_verify
 
@@ -63,8 +63,7 @@ def test_domain_off_by_default():
 
 if __name__ == "__main__":
     print("可用领域:", available_domains())
-    for t in [test_mass_conservation, test_degree_of_unsaturation, test_radical_is_not_impossible,
-              test_out_of_scope_is_unknown, test_smiles_optional_and_honest,
-              test_extraction_from_prose, test_end_to_end_domain_gate, test_domain_off_by_default]:
-        t(); print(f"✅ {t.__name__}")
-    print("\n领域物理可达性 PASSED")
+    run_suite([test_mass_conservation, test_degree_of_unsaturation, test_radical_is_not_impossible,
+               test_out_of_scope_is_unknown, test_smiles_optional_and_honest,
+               test_extraction_from_prose, test_end_to_end_domain_gate, test_domain_off_by_default],
+              "领域物理可达性")

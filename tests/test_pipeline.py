@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline, skip_if_no_search, assert_capable, CapabilityLost
+from _netguard import skip_if_offline, skip_if_no_search, assert_capable, run_suite
 from pipeline.pipeline import run_pipeline
 from coe_kernel import run_verify
 
@@ -34,12 +34,6 @@ def test_guard_drops_hallucination():
     assert_capable(rep["all_green"] is True, "all claims green", "cite")
 
 if __name__ == "__main__":
-    skipped = []
-    for t, label in [(test_real_literature_and_execution, "real literature + execution"),
-                     (test_guard_drops_hallucination, "guard drops hallucination")]:
-        try:
-            t(); print(f"✅ {label}")
-        except CapabilityLost as e:
-            skipped.append(label); print(f"  ⏭  {label} SKIP — {e}")
-    tail = f" ({len(skipped)} skipped · 项因能力中途失效跳过)" if skipped else ""
-    print(f"\nM5 pipeline 测试 PASSED{tail}")
+    run_suite([(test_real_literature_and_execution, "real literature + execution"),
+               (test_guard_drops_hallucination, "guard drops hallucination")],
+              "M5 pipeline 测试")

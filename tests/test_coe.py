@@ -3,7 +3,7 @@
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from coe_kernel import run_verify
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, run_suite
 
 def test_golden():
     if skip_if_offline("test_golden"):
@@ -31,4 +31,4 @@ def test_golden():
     assert not list(Draft202012Validator(schema).iter_errors(rep))
 
 if __name__ == "__main__":
-    test_golden(); print("✅ test_golden PASSED")
+    run_suite([test_golden], "CoE golden")

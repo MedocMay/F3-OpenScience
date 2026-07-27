@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, run_suite
 from memory import ExperienceStore
 
 FAKE_REPORT = {"claims": [
@@ -45,6 +45,5 @@ def test_revoke():
     assert not any(l["id"]==lid for l in s.inject(["fake_cite"],"global"))   # 撤回后 global 查不到
 
 if __name__=="__main__":
-    for t in [test_writeback_and_inject,test_quality_gate_blocks_single,test_consent_required,test_revoke]:
-        t(); print(f"✅ {t.__name__}")
-    print("\nM2 governance tests PASSED")
+    run_suite([test_writeback_and_inject, test_quality_gate_blocks_single,
+               test_consent_required, test_revoke], "M2 governance tests")

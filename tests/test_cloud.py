@@ -1,6 +1,8 @@
 """云端多租户 + BYOK 密管 + 存储抽象 回归。"""
 import sys, os, sqlite3, shutil
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(__file__))
+from _netguard import run_suite, skip_if_missing
 os.environ["OPENSCI_MASTER_KEY"] = "test-master-key"
 from cloud.vault import KeyVault
 from cloud.tenancy import TenantRegistry
@@ -9,6 +11,11 @@ from cloud.db import open_db
 def _clean(p): shutil.rmtree(p, ignore_errors=True); os.path.exists(p) and os.remove(p)
 
 def test_vault_byok():
+    # BYOK needs `cryptography`, an optional extra. Absent, this environment cannot
+    # exercise the vault at all — that is a capability gap, not a defect.
+    # BYOK 需要可选依赖 cryptography。没装就根本无法验证密管 ——
+    # 这是能力缺口,不是缺陷。
+    if skip_if_missing("cryptography", "cloud", "test_vault_byok"): return
     p = "/tmp/t_vault.db"; _clean(p)
     v = KeyVault(p)
     v.put("alice", "anthropic", "sk-ALICE"); v.put("bob", "anthropic", "sk-BOB")
@@ -38,6 +45,5 @@ def test_db_abstraction():
     # postgres 后端:open_db("postgresql://...") 同接口(需 psycopg,不在此环境跑)
 
 if __name__ == "__main__":
-    for t in [test_vault_byok, test_tenant_isolation, test_db_abstraction]:
-        t(); print(f"✅ {t.__name__}")
-    print("\n云端(多租户 + BYOK + 存储抽象)测试 PASSED")
+    run_suite([test_vault_byok, test_tenant_isolation, test_db_abstraction],
+              "云端(多租户 + BYOK + 存储抽象)测试")

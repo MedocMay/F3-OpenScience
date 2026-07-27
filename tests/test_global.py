@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, run_suite
 from memory import ExperienceStore
 from memory.global_store import GlobalMemory
 
@@ -58,6 +58,5 @@ def test_revoke_drops_below_gate():
     print("  撤回后掉出 global ✅")
 
 if __name__=="__main__":
-    for t in [test_cross_user_aggregation,test_desensitize_blocks_poison,test_consent_required,test_revoke_drops_below_gate]:
-        t()
-    print("\nM4 global 治理测试 PASSED")
+    run_suite([test_cross_user_aggregation, test_desensitize_blocks_poison,
+               test_consent_required, test_revoke_drops_below_gate], "M4 global 治理测试")

@@ -98,10 +98,64 @@ def net_ok() -> bool:
     return can_judge_citations()
 
 
+_skipped: list[tuple[str, str]] = []
+
+
 def _notice(name: str, what: str) -> bool:
-    print(f"  ⚠️  {what} unavailable (rate-limited or offline) — skipping "
-          f"{name or 'test'} (NOT a regression · 非回归)")
+    _skipped.append((name or "test", what))
     return True
+
+
+def skip_if_missing(module: str, extra: str, name: str = "") -> bool:
+    """Skip when an optional dependency is absent. 缺可选依赖时跳过。
+
+    A dependency you did not install is a capability this environment lacks — not a
+    defect in the code under test. Reporting it as a failure is the conflation this
+    project exists to name, one level up: the harness mistaking its own gap for a
+    fact about the subject.
+    没装的依赖是「这个环境缺这项能力」,不是被测代码的缺陷。报成失败,
+    就是本项目要指出的那种混同上移了一层。
+    """
+    try:
+        __import__(module)
+        return False
+    except ImportError:
+        return _notice(name, f"{module} not installed — pip install -e '.[{extra}]' · 未安装可选依赖")
+
+
+def run_suite(tests, title: str) -> None:
+    """Shared runner. ✅ = ran and passed. ⏭ = skipped, **not run**.
+
+    共用 runner。✅ = 跑过且通过。⏭ = 跳过,**未运行**。
+
+    A test that returned early for want of a capability must not print the same mark
+    as one that actually asserted something. "We checked" and "we could not check"
+    are different findings — printing ✅ for both is exactly how a suite comes to
+    report green while having verified nothing.
+    因缺能力提前返回的测试,不能和真正断言过的测试打同一个标记。
+    「查过了」和「查不了」是两种结论 —— 两者都打 ✅,
+    正是一个套件什么都没验证却报绿的方式。
+
+    tests: [callable] or [(callable, label)]
+    """
+    ran = skipped = 0
+    for item in tests:
+        fn, label = item if isinstance(item, tuple) else (item, item.__name__)
+        mark = len(_skipped)
+        try:
+            fn()
+        except CapabilityLost as e:
+            skipped += 1
+            print(f"  ⏭  {label} SKIP — {e}")
+            continue
+        if len(_skipped) > mark:
+            skipped += 1
+            print(f"  ⏭  {label} SKIP — {_skipped[-1][1]}")
+        else:
+            ran += 1
+            print(f"✅ {label}")
+    tail = f" ({ran} ran · {skipped} SKIPPED, not run · 项未运行)" if skipped else ""
+    print(f"\n{title} PASSED{tail}")
 
 
 class CapabilityLost(Exception):
@@ -145,9 +199,11 @@ def assert_capable(cond, what: str, capability: str = "cite", detail: str = "") 
 
 def skip_if_offline(name: str = "") -> bool:
     """Skip when citation judgement is unavailable. 无法判定引用时跳过。"""
-    return False if can_judge_citations() else _notice(name, "Citation verification")
+    return False if can_judge_citations() else _notice(
+        name, "Citation verification unavailable (rate-limited or offline) · 引用判定不可用")
 
 
 def skip_if_no_search(name: str = "") -> bool:
     """Skip when literature search is unavailable. 无法检索文献时跳过。"""
-    return False if can_search_literature() else _notice(name, "Literature search")
+    return False if can_search_literature() else _notice(
+        name, "Literature search unavailable (rate-limited or offline) · 文献检索不可用")

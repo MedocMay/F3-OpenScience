@@ -2,7 +2,7 @@
 import sys, os, json, hashlib, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
-from _netguard import skip_if_offline
+from _netguard import skip_if_offline, run_suite
 from memory import ExperienceStore
 from memory.global_store import GlobalMemory
 from orchestrator.packager import build_package
@@ -42,6 +42,5 @@ def test_sovereignty_list_and_revoke():
     print("  主权面板:查看贡献(scope=global,可见 reuse)+ 撤回掉出 global ✅")
 
 if __name__ == "__main__":
-    test_reproducible_package()
-    test_sovereignty_list_and_revoke()
-    print("\nM6 (T7 可复现包 + T8 主权面板) PASSED")
+    run_suite([test_reproducible_package, test_sovereignty_list_and_revoke],
+              "M6 (T7 可复现包 + T8 主权面板)")

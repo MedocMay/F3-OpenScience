@@ -4,7 +4,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "orchestrator"))
 sys.path.insert(0, os.path.dirname(__file__))
 from orchestrator import Orchestrator
-from _netguard import skip_if_no_search, skip_if_offline, assert_capable, CapabilityLost
+from _netguard import skip_if_no_search, skip_if_offline, assert_capable, run_suite
 
 def test_multiprocess_flywheel():
     # the full chain runs literature search · 完整链路会走文献检索
@@ -33,7 +33,5 @@ def test_multiprocess_flywheel():
     assert_capable(r2["report"]["stats"]["hallucinated_citations"] == 0, "RUN2 caught 0", "cite")
 
 if __name__ == "__main__":
-    try:
-        test_multiprocess_flywheel(); print("✅ test_multiprocess_flywheel PASSED (real IPC)")
-    except CapabilityLost as e:
-        print(f"  ⏭  test_multiprocess_flywheel SKIP — {e}")
+    run_suite([(test_multiprocess_flywheel, "test_multiprocess_flywheel (real IPC)")],
+              "M3 多进程集成")
