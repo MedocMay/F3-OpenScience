@@ -128,21 +128,48 @@ What changes is only whether a failure earns the right to shape generation prefe
 
 ## Quick start · 快速开始
 
+> **Every command below assumes an activated virtualenv.** A new terminal needs it again.
+> **下面每条命令都假设虚拟环境已激活。** 每开一个新终端都要重新激活一次。
+
 ```bash
-# 1) Run the tests (needs network: real arXiv / CrossRef / OpenAlex)
+# 0) Setup — once per machine · 每台机器做一次
+python3 --version                  # must be 3.11+ · 必须 3.11 以上
+python3 -m venv .venv
+source .venv/bin/activate          # ← every new terminal · 每个新终端都要
+pip install -e '.[test]'           # core is stdlib-only; this adds test deps
+                                   #   核心零第三方依赖,这步只装测试依赖
+
+# 1) Check the environment BEFORE running anything · 跑任何东西之前先体检
+make doctor
+
+# 2) Run the tests (needs network: real arXiv / CrossRef / OpenAlex)
 #    跑测试(需网络:真实 arXiv / CrossRef / OpenAlex)
 make test
 
-# 2) End-to-end demo (verification → flywheel → multi-process chain → reproducible package)
+# 3) The narrowing experiment — the shortest path to seeing what this project claims
+#    收窄实验 —— 看清本项目主张的最短路径
+python experiments/narrowing/run_experiment.py
+
+# 4) End-to-end demo (verification → flywheel → multi-process chain → reproducible package)
 #    端到端演示(CoE 校验 → 飞轮闭环 → 多进程链路 → 可复现包)
 bash demo.sh
 
-# 3) TS brain driving Python sidecars · TS 大脑驱动 Python sidecar
+# 5) TS brain driving Python sidecars · TS 大脑驱动 Python sidecar
 cd orchestrator-ts && npm i && npm start
 
-# 4) Desktop shell (requires Rust) · 桌面壳(需 Rust 工具链)
+# 6) Desktop shell (requires Rust) · 桌面壳(需 Rust 工具链)
 cd apps/shell && npm i && npm run tauri build
 ```
+
+`make doctor` reports at three levels: **blocking** (wrong Python, missing certificates,
+missing test deps), **degraded** (an index API is rate-limiting you — everything still runs,
+but the narrowing experiment will report NOT ELIGIBLE), and **advisory**. It checks
+capability rather than connectivity: not "can I reach arXiv?" but "can I get a definitive
+negative for an ID that does not exist?"
+
+`make doctor` 分三档报告:**阻塞**(Python 版本、证书、测试依赖)、**受损**(索引 API 限流 ——
+一切照跑,但收窄实验会报不适格)、**提醒**。它查的是能力而非连通性:不是「能否连上 arXiv」,
+而是「能否对一个不存在的 ID 得到明确否定」。
 
 ![Terminal demo · 终端演示](docs/assets/terminal-demo.gif)
 
@@ -247,6 +274,15 @@ per-request 路由 + 回退链。default 设为本地模型即**数据不出域*
 
 The core has **zero third-party dependencies** (standard library only).
 核心**零第三方依赖**(纯标准库)。
+
+From a clone — what you want for development · 从 clone 安装(开发用):
+
+```bash
+pip install -e .                        # core · 核心
+pip install -e '.[test]'                # + test suites · 加测试套件
+```
+
+From PyPI · 从 PyPI 安装:
 
 ```bash
 pip install f3-openscience              # core · 核心:校验、飞轮、量纲、化学守恒判据
