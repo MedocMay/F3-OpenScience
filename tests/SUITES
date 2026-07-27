@@ -1,0 +1,30 @@
+# Single source of truth for the regression suites.
+# 回归套件的单一事实来源。
+#
+# `make test` and .github/workflows/ci.yml both read this file. They used to keep
+# separate lists, which drifted: make ran 7, CI ran 14, and the README claimed
+# "14 suites, all green" — a claim no documented command could check. The suite
+# backing the `0 false-rejection rate` badge (test_reachability) was among the
+# seven that make never ran.
+# `make test` 与 CI 都读这个文件。两边原先各存一份清单并且分叉了:make 跑 7 个,
+# CI 跑 14 个,而 README 声称「14 个套件全绿」—— 没有任何文档中的命令能验证这句话。
+# 支撑 `0 false-rejection rate` 徽章的那个套件(test_reachability),正在 make
+# 从不运行的那七个里。
+#
+# Adding a suite here is enough; nothing else needs editing.
+# 新增套件只需在这里加一行,别处不用改。
+
+test_coe              # CoE 四层引用校验 · golden case
+test_flywheel         # M2 经验飞轮 + 治理门
+test_global           # M4 跨用户治理
+test_integration      # M3 多进程 IPC 链路
+test_pipeline         # M5 主线:真检索 + 真执行
+test_sovereignty      # M6 可复现包 + 主权面板
+test_router           # P2 模型路由与回退
+test_cloud            # 多租户 + BYOK + 存储抽象
+test_sandbox          # 沙箱强隔离
+test_reachability     # ★ 可达性:误拒率 / 漏放率 / 覆盖率
+test_derivation       # 推导式证据链
+test_dimensions       # 量纲一致性
+test_exploration      # 探索预算与新颖论断
+test_domains          # 领域物理判据(化学守恒 / 价键)

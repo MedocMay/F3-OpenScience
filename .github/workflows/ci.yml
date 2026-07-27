@@ -17,7 +17,7 @@ jobs:
               Draft202012Validator.check_schema(json.load(open(f)))
               print("ok", f)
           PY
-      - name: Regression (14 suites)
+      - name: Regression (suite list · tests/SUITES)
         # Suites that hit live academic APIs (arXiv / CrossRef / OpenAlex) skip
         # themselves when those services are unreachable — CI runners are often
         # rate-limited. Skipping is correct; weakening assertions would hide
@@ -26,9 +26,8 @@ jobs:
         # 跳过是对的;放宽断言会掩盖真实回归。见 tests/_netguard.py。
         run: |
           fail=0
-          for t in test_coe test_flywheel test_global test_integration test_pipeline \
-                   test_sovereignty test_router test_cloud test_sandbox test_reachability \
-                   test_derivation test_dimensions test_exploration test_domains; do
+          # Same list make test uses — see tests/SUITES · 与 make test 同一份清单
+          for t in $(sed 's/#.*//' tests/SUITES | tr -d '[:blank:]' | grep .); do
             echo "──────── $t ────────"
             python tests/$t.py || { echo "::error::$t FAILED"; fail=1; }
           done

@@ -4,8 +4,8 @@ PY ?= python3
 doctor:          ## 环境体检:版本 / 证书 / 依赖 / 校验服务能力
 	$(PY) scripts/doctor.py
 
-test:            ## 跑 7 个回归套件(需网络)
-	@fail=0; for t in test_coe test_flywheel test_global test_integration test_pipeline test_sovereignty test_router; do \
+test:            ## 跑全部回归套件(需网络) —— 清单见 tests/SUITES
+	@fail=0; for t in $$(sed 's/#.*//' tests/SUITES | tr -d '[:blank:]' | grep .); do \
 		printf "%-18s " $$t; \
 		if out=$$($(PY) tests/$$t.py 2>&1); then echo "$$out" | tail -1; \
 		else echo "FAILED"; echo "$$out" | sed 's/^/    /'; fail=1; fi; \
