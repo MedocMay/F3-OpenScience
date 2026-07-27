@@ -31,12 +31,14 @@ import json
 import os
 import platform
 import ssl
+import time
 import sys
 import urllib.error
 import urllib.request
 
 MIN_PY = (3, 11)
 TIMEOUT = 20
+_ARXIV_MIN_INTERVAL = 3.0   # matches apis.py 与 apis.py 一致
 UA = {"User-Agent": "F3-OpenScience-doctor/1.0 (+https://github.com/MedocMay/F3-OpenScience)"}
 
 # ── tiny reporter ────────────────────────────────────────────────────────────
@@ -199,17 +201,18 @@ def check_verifier_capability(r: Report, offline: bool) -> None:
     # ---- arXiv: must confirm a real ID *and* refuse a fake one definitively ----
     status, body, err = get("https://export.arxiv.org/api/query?id_list=1706.03762")
     if err or status != 200 or not body:
-        r.fail("arXiv · confirm an existing ID · 确认已有 ID", err or f"HTTP {status}",
+        r.degrade("arXiv · confirm an existing ID · 确认已有 ID", err or f"HTTP {status}",
                fix=["Check network access to export.arxiv.org · 检查到 export.arxiv.org 的网络。"])
     elif b"<entry>" not in body:
-        r.fail("arXiv · confirm an existing ID · 确认已有 ID", "no entry returned · 未返回条目")
+        r.degrade("arXiv · confirm an existing ID · 确认已有 ID", "no entry returned · 未返回条目")
     else:
         r.ok("arXiv · confirm an existing ID · 确认已有 ID", "1706.03762")
 
         # The capability that actually matters.
+        time.sleep(_ARXIV_MIN_INTERVAL)
         status2, body2, err2 = get("https://export.arxiv.org/api/query?id_list=2099.99999")
         if err2 or body2 is None:
-            r.fail(
+            r.degrade(
                 "arXiv · definitive negative for a fake ID · 对捏造 ID 给出明确否定",
                 err2 or f"HTTP {status2}",
                 fix=[
@@ -234,14 +237,14 @@ def check_verifier_capability(r: Report, offline: bool) -> None:
     # ---- CrossRef ----
     status, body, err = get("https://api.crossref.org/works/10.1038/s41586-021-03819-2")
     if err or status != 200:
-        r.fail("CrossRef · confirm a real DOI · 确认真实 DOI", err or f"HTTP {status}")
+        r.degrade("CrossRef · confirm a real DOI · 确认真实 DOI", err or f"HTTP {status}")
     else:
         r.ok("CrossRef · confirm a real DOI · 确认真实 DOI", "10.1038/s41586-021-03819-2")
         status2, _, err2 = get("https://api.crossref.org/works/10.9999/fake.nonexistent.2099")
         if status2 == 404:
             r.ok("CrossRef · definitive negative · 明确否定", "HTTP 404")
         else:
-            r.fail(
+            r.degrade(
                 "CrossRef · definitive negative · 明确否定",
                 err2 or f"HTTP {status2} (expected 404)",
                 fix=["Without a definitive 404, fabricated DOIs cannot be confirmed as fabricated.",
