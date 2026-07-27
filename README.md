@@ -10,7 +10,7 @@
 
 *第一个产出前有独立校验的开源科研 Agent —— 也是第一个证明了自己没有因为校验而丧失探索能力的系统。*
 
-`0 hallucinated citations` · `0 false-rejection rate` · `verification-memory flywheel` · `reachability guarantee` · `model-agnostic` · `self-hostable`
+`0 false-rejection on 7 known-valid claims` · `0 missed fabrication on 4 known-fabricated` · `verification-memory flywheel` · `reachability guarantee` · `model-agnostic` · `self-hostable`
 
 [![CI](https://github.com/MedocMay/F3-OpenScience/actions/workflows/ci.yml/badge.svg)](https://github.com/MedocMay/F3-OpenScience/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-D9A441)](LICENSE)
@@ -295,7 +295,7 @@ pip install 'f3-openscience[test]'      # run the test suites · 跑测试
 
 ## Status · 状态
 
-**Research prototype · 研究原型 · v0.2.0 · 14 test suites, all green · 14 个测试套件全绿**
+**Research prototype · 研究原型 · v0.2.0 · 14 test suites — run them yourself: `make test` · 14 个测试套件,自己跑一遍:`make test`**
 
 Empirically tested · 已实测:CoE four-layer citation verification (live APIs) · derivation
 recomputation · dimensional and domain-physics criteria · flywheel splitting · cross-user

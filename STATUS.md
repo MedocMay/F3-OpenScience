@@ -29,7 +29,7 @@ Not suitable (until the corresponding verification is done):
 
 ## 2. What has been empirically tested
 
-All of the following are reproducible in this repository (`make test`, 14 suites, all green):
+All of the following are reproducible in this repository — run `make test` (14 suites) and read the per-suite line: a suite that could not reach a service prints `(0 ran · N SKIPPED, not run)` rather than a bare pass.
 
 | Item | How it was verified | Boundary |
 |---|---|---|

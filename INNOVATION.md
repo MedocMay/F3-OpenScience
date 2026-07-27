@@ -165,8 +165,8 @@ All of the following can be re-run directly from this repository (`make test`, 1
 
 | Claim | How to verify |
 |---|---|
-| 0 hallucinated citations leaked | `tests/test_coe.py` golden set, against live arXiv / CrossRef / OpenAlex |
-| 0 false-rejection rate | `tests/test_reachability.py`, including purpose-built false-rejection traps |
+| No fabricated citation passes the signing gate | `tests/test_coe.py` golden set, against live arXiv / CrossRef / OpenAlex |
+| 0 false-rejection on 7 known-valid claims · 0 missed fabrication on 4 known-fabricated | `tests/test_reachability.py` — an 11-claim regression set with purpose-built false-rejection traps |
 | Only fabrication constrains the flywheel | `tests/test_flywheel.py` + `test_reachability.py` |
 | Derivation recomputation and contradiction detection | `tests/test_derivation.py` (includes AST whitelist safety tests) |
 | Incompatible dimensions / value ranges | `tests/test_dimensions.py` |
