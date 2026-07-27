@@ -104,6 +104,45 @@ def _notice(name: str, what: str) -> bool:
     return True
 
 
+class CapabilityLost(Exception):
+    """The capability under test disappeared mid-run. 被测能力在运行途中消失。
+
+    Not a regression — the suite simply stopped being able to observe.
+    非回归 —— 只是套件中途失去了观测能力。
+    """
+
+
+def assert_capable(cond, what: str, capability: str = "cite", detail: str = "") -> None:
+    """Assert, but re-probe the capability before calling a failure a failure.
+
+    Probing once at the start and trusting that answer for the rest of the run
+    carries exactly the blind spot this project exists to name: a stale view of
+    one's own reach, reported as a fact about the code. These suites generate
+    enough traffic to rate-limit *themselves* partway through — test_integration
+    runs the full chain twice — so "the assertion failed" and "the service stopped
+    answering" are genuinely different findings, and only a fresh probe tells them
+    apart.
+
+    开头探测一次、其后全程信任那个答案,带着的正是本项目要指出的那种盲区:把自己
+    过期的视野,报告成关于代码的事实。这些套件自身的流量足以让它们跑到一半把自己
+    限流(test_integration 会跑两遍完整链路)—— 所以「断言失败」和「服务不再作答」
+    是两种不同的结论,只有重新探测才分得开。
+
+    The re-probe costs two API calls and only happens on failure, so it does not
+    add to the pressure that caused the degradation.
+    重新探测只在失败时发生、只花两次 API 调用,不会加重造成降级的那份压力。
+    """
+    if cond:
+        return
+    _cache.pop(capability, None)                        # force a fresh probe · 强制重探
+    alive = can_judge_citations() if capability == "cite" else can_search_literature()
+    if not alive:
+        raise CapabilityLost(
+            f"{what}: capability '{capability}' was available at start but is gone now "
+            f"(rate-limited mid-run) · 开始时可用,现已失去(运行中被限流) —— NOT a regression · 非回归")
+    raise AssertionError(detail or what)
+
+
 def skip_if_offline(name: str = "") -> bool:
     """Skip when citation judgement is unavailable. 无法判定引用时跳过。"""
     return False if can_judge_citations() else _notice(name, "Citation verification")
