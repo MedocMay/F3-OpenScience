@@ -299,7 +299,9 @@ pip install 'f3-openscience[test]'      # run the test suites · 跑测试
 
 Empirically tested · 已实测:CoE four-layer citation verification (live APIs) · derivation
 recomputation · dimensional and domain-physics criteria · flywheel splitting · cross-user
-governance · multi-process IPC · sandbox isolation · service layer of all three deployment modes.
+governance · multi-process IPC · sandbox isolation (on macOS the memory limit is
+unavailable — the kernel refuses RLIMIT_AS; see STATUS.md) · service layer of all three
+deployment modes.
 
 **Not verified · 未验证:end-to-end with a real LLM · real research output · desktop app builds ·
 Docker orchestration · Windows/macOS execution · scale and performance · security audit.**
