@@ -279,6 +279,16 @@ def check_verifier_capability(r: Report, offline: bool) -> None:
         "通常是限流 —— 等一会儿,或换网络重试。",
     ]
 
+    search_fix = [
+        "ID lookup and topic search are different arXiv endpoints (id_list vs",
+        "search_query) and fail independently. Without search, test_integration",
+        "and test_pipeline run ZERO tests — `make test` says '(0 ran · N SKIPPED)'.",
+        "ID 查询与主题检索是 arXiv 的两个端点,独立失效。检索不可用时,",
+        "test_integration 与 test_pipeline 会零执行。其余一切照常。",
+        "", "Usually rate limiting — wait, or run from another network.",
+        "通常是限流 —— 等一会儿,或换网络重试。",
+    ]
+
     probe("arXiv · confirm an existing ID · 确认已有 ID",
           lambda: apis.check_arxiv("1706.03762")[0], True, "1706.03762", rate_fix)
     probe("arXiv · definitive negative for a fake ID · 对捏造 ID 给出明确否定",
@@ -289,6 +299,25 @@ def check_verifier_capability(r: Report, offline: bool) -> None:
     probe("CrossRef · definitive negative · 明确否定",
           lambda: apis.check_doi("10.9999/fake.nonexistent.2099")[0], False,
           "authoritative absence · 权威否定", rate_fix)
+
+    # Topic search is a SEPARATE capability from ID lookup; the two fail
+    # independently under rate limiting. Omitting it is how this file reported
+    # READY while test_integration and test_pipeline ran zero tests.
+    # 按主题检索与 ID 查询是两项能力,限流下独立失效。漏掉它,正是本文件报 READY
+    # 的同时那两个套件零执行的原因。
+    try:
+        from pipeline.pipeline import literature
+        n = len(literature("neural networks", n=2))
+    except Exception as e:
+        r.degrade("arXiv · literature search by topic · 按主题检索",
+                  f"{type(e).__name__}: {e}", fix=search_fix)
+    else:
+        if n >= 1:
+            r.ok("arXiv · literature search by topic · 按主题检索",
+                 f"{n} paper(s) · search_query endpoint")
+        else:
+            r.degrade("arXiv · literature search by topic · 按主题检索",
+                      "search returned nothing · 检索返回空", fix=search_fix)
 
     try:
         matched, _, _ = apis.match_openalex("Attention Is All You Need")
