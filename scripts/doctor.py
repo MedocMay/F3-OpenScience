@@ -187,93 +187,97 @@ def check_tls(r: Report) -> None:
 
 
 def check_verifier_capability(r: Report, offline: bool) -> None:
-    """The point of this section: reachable ≠ able to decide.
+    """Probe through the project's own code path, not around it.
 
-    本节要点:连得上 ≠ 判得了。
+    走项目自己的代码路径,而不是绕过它。
+
+    An earlier version of this file issued its own urllib requests. It therefore
+    checked whether *this machine* could reach arXiv — not whether *this project's
+    verifier* could. Those came apart in practice: doctor reported all green while
+    coe_kernel.apis was failing every arXiv lookup, because apis was still using a
+    plaintext http:// URL that timed out. A doctor that does not exercise the real
+    call path can certify an environment the code cannot actually work in.
+    本文件早先版本自己发 urllib 请求,于是它检查的是「这台机器能不能连上 arXiv」,
+    而不是「这个项目的校验器能不能」。两者真的分开过:doctor 全绿,而 coe_kernel.apis
+    的每一次 arXiv 查询都在失败 —— 因为 apis 还在用会超时的明文 http:// 地址。
+    不走真实调用路径的体检,会给一个代码根本跑不通的环境发合格证。
+
+    Going through apis also inherits its throttling, circuit breaker and on-disk
+    cache. The cache means a repeat run may answer from a stored authoritative
+    denial rather than the network — which is the honest answer to "can the verifier
+    judge this?", since a cached denial is a real capability.
+    走 apis 也就继承了它的限速、熔断与磁盘缓存。缓存意味着重复运行可能由已存的权威
+    否定作答而非网络 —— 对「校验器判得了吗」这个问题,这正是诚实的答案:缓存里的
+    权威否定就是一种真实能力。
     """
     print("\nVerification services · 校验服务")
-    print("  \033[90m(checking capability, not connectivity · 查的是能力,不是连通性)\033[0m")
+    print("  \033[90m(through coe_kernel.apis — the real call path · 走 coe_kernel.apis 真实调用路径)\033[0m")
 
     if offline:
         r.skip("all network checks · 全部网络检查", "--offline")
         return
 
-    # ---- arXiv: must confirm a real ID *and* refuse a fake one definitively ----
-    status, body, err = get("https://export.arxiv.org/api/query?id_list=1706.03762")
-    if err or status != 200 or not body:
-        r.degrade("arXiv · confirm an existing ID · 确认已有 ID", err or f"HTTP {status}",
-               fix=["Check network access to export.arxiv.org · 检查到 export.arxiv.org 的网络。"])
-    elif b"<entry>" not in body:
-        r.degrade("arXiv · confirm an existing ID · 确认已有 ID", "no entry returned · 未返回条目")
-    else:
-        r.ok("arXiv · confirm an existing ID · 确认已有 ID", "1706.03762")
+    try:
+        sys.path.insert(0, os.getcwd())
+        from coe_kernel import apis
+    except Exception as e:  # noqa: BLE001
+        r.fail("import coe_kernel.apis", f"{type(e).__name__}: {e}",
+               fix=["Run from the repository root · 必须在仓库根目录下运行。"])
+        return
 
-        # The capability that actually matters.
-        time.sleep(_ARXIV_MIN_INTERVAL)
-        status2, body2, err2 = get("https://export.arxiv.org/api/query?id_list=2099.99999")
-        if err2 or body2 is None:
-            r.degrade(
-                "arXiv · definitive negative for a fake ID · 对捏造 ID 给出明确否定",
-                err2 or f"HTTP {status2}",
-                fix=[
-                    "Reachable but unable to decide. Fabricated citations will come",
-                    "back 'manual' (transport failure) instead of 'reject', and the",
-                    "narrowing experiment will be NOT ELIGIBLE.",
-                    "连得上但判不了。捏造引用会返回 manual(传输失败)而非 reject,",
-                    "narrowing 实验会被判为不适格。",
-                    "",
-                    "Usually rate limiting. Wait, or run from another network.",
-                    "通常是限流。等一会儿,或换网络重试。",
-                ],
-            )
-        elif b"<entry>" in body2:
-            r.warn(
-                "arXiv · definitive negative for a fake ID · 对捏造 ID 给出明确否定",
-                "a fabricated ID returned an entry — investigate · 捏造 ID 竟返回了条目,需排查",
-            )
+    def probe(label, fn, want, detail, fix=None):
+        try:
+            got = fn()
+        except Exception as e:  # noqa: BLE001
+            r.degrade(label, f"{type(e).__name__}: {e}", fix=fix)
+            return
+        if got is want:
+            r.ok(label, detail)
+        elif got is None:
+            r.degrade(label, "verifier returned unknown · 校验器返回未知", fix=fix)
         else:
-            r.ok("arXiv · definitive negative for a fake ID · 对捏造 ID 给出明确否定", "2099.99999 → absent")
+            r.warn(label, f"unexpected verdict {got!r} — investigate · 判定异常,需排查")
 
-    # ---- CrossRef ----
-    status, body, err = get("https://api.crossref.org/works/10.1038/s41586-021-03819-2")
-    if err or status != 200:
-        r.degrade("CrossRef · confirm a real DOI · 确认真实 DOI", err or f"HTTP {status}")
+    rate_fix = [
+        "Reachable but unable to decide. Fabricated citations come back 'manual'",
+        "(transport failure) instead of 'reject', and the narrowing experiment will",
+        "report NOT ELIGIBLE. The repo still runs and the tests still pass.",
+        "连得上但判不了。捏造引用会返回 manual(传输失败)而非 reject,narrowing",
+        "实验会被判为不适格。仓库照常运行,测试照常通过。",
+        "",
+        "Usually rate limiting — wait, or run from another network.",
+        "通常是限流 —— 等一会儿,或换网络重试。",
+    ]
+
+    probe("arXiv · confirm an existing ID · 确认已有 ID",
+          lambda: apis.check_arxiv("1706.03762")[0], True, "1706.03762", rate_fix)
+    probe("arXiv · definitive negative for a fake ID · 对捏造 ID 给出明确否定",
+          lambda: apis.check_arxiv("2099.99999")[0], False, "2099.99999 → absent", rate_fix)
+    probe("CrossRef · confirm a real DOI · 确认真实 DOI",
+          lambda: apis.check_doi("10.1038/s41586-021-03819-2")[0], True,
+          "10.1038/s41586-021-03819-2", rate_fix)
+    probe("CrossRef · definitive negative · 明确否定",
+          lambda: apis.check_doi("10.9999/fake.nonexistent.2099")[0], False,
+          "authoritative absence · 权威否定", rate_fix)
+
+    try:
+        matched, _, _ = apis.match_openalex("Attention Is All You Need")
+    except Exception as e:  # noqa: BLE001
+        matched = None
+        r.degrade("OpenAlex · index lookup · 索引查询", f"{type(e).__name__}: {e}")
     else:
-        r.ok("CrossRef · confirm a real DOI · 确认真实 DOI", "10.1038/s41586-021-03819-2")
-        status2, _, err2 = get("https://api.crossref.org/works/10.9999/fake.nonexistent.2099")
-        if status2 == 404:
-            r.ok("CrossRef · definitive negative · 明确否定", "HTTP 404")
+        if matched is None:
+            r.degrade("OpenAlex · index lookup · 索引查询",
+                      "index unreachable · 索引不可达",
+                      fix=["Add a mailto to enter the polite pool · 加 mailto 进 polite pool:",
+                           "  export OPENALEX_MAILTO=you@example.com"])
         else:
-            r.degrade(
-                "CrossRef · definitive negative · 明确否定",
-                err2 or f"HTTP {status2} (expected 404)",
-                fix=["Without a definitive 404, fabricated DOIs cannot be confirmed as fabricated.",
-                     "拿不到确定的 404,捏造 DOI 就无法被确认为捏造。"],
-            )
+            r.ok("OpenAlex · index lookup · 索引查询",
+                 "confirms only, never refutes · 只确认,不证伪")
 
-    # ---- OpenAlex: index only. It may confirm, never refute. ----
-    status, _, err = get("https://api.openalex.org/works?filter=doi:10.1038/s41586-021-03819-2")
-    if status == 429:
-        r.degrade(
-            "OpenAlex · index lookup · 索引查询",
-            "HTTP 429 rate limited · 被限流",
-            fix=[
-                "Add a mailto to enter the polite pool · 加 mailto 进入 polite pool:",
-                "  export OPENALEX_MAILTO=you@example.com",
-                "While throttled, index gaps are indistinguishable from transport",
-                "failures — exactly the conflation this project is about.",
-                "被限流时,索引缺口与传输失败无法区分 —— 这正是本项目要讲的那种混同。",
-                "",
-                "The repo still runs and the tests still pass. Only the narrowing",
-                "experiment's eligibility is affected.",
-                "仓库照常运行,测试照常通过。受影响的只是 narrowing 实验的适格性。",
-            ],
-        )
-    elif err or status != 200:
-        r.warn("OpenAlex · index lookup · 索引查询", err or f"HTTP {status}")
-    else:
-        r.ok("OpenAlex · index lookup · 索引查询",
-             "confirms only, never refutes · 只确认,不证伪")
+    breaker = {k: v for k, v in apis._fails.items() if v}
+    if breaker:
+        r.warn("circuit breaker · 熔断计数", f"{breaker} (opens at {apis._BREAK} · 阈值)")
 
 
 # ── main ─────────────────────────────────────────────────────────────────────

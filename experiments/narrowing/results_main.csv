@@ -1,3 +1,9 @@
+# condition,main
+# eligible,yes
+# verdict,fabricated -> reject,5
+# verdict,valid_easy -> pass,5
+# verdict,valid_hard -> unresolved,5
+# note,rows below are data; lines starting with # are provenance
 arm,round,proposed,intercepted,interception_rate,reachability,hard_retained,constraints,backlog
 A_conflating,0,0,0,0.0,1.0,1.0,0,0
 A_conflating,1,8,3,0.375,0.5,0.0,2,0

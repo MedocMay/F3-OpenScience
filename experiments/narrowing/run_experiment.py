@@ -337,8 +337,22 @@ def main():
     print("  提醒:此处生成器是替身。本实验量化机制,不构成对真实 LLM 行为的证据。")
 
     # ── write CSV ────────────────────────────────────────────────────
+    # A results file that does not say whether the run was eligible cannot be read
+    # without also having the console output — and once committed, nobody has that.
+    # The provenance header makes the file self-describing: condition, eligibility,
+    # why it was ineligible, and exactly what the live services returned.
+    # 一份不写明是否适格的结果文件,离开当时的终端输出就没法读 —— 而一旦提交进仓库,
+    # 没人还有那份输出。头部的溯源信息让文件自证:条件、适格与否、不适格的原因,
+    # 以及真实服务当时到底返回了什么。
     with open(args.out, "w", newline="") as f:
         w = csv.writer(f)
+        w.writerow(["# condition", "control" if args.control else "main"])
+        w.writerow(["# eligible", "yes" if eligible else "NO"])
+        for _p in problems:
+            w.writerow(["# ineligible_because", _p])
+        for (_cls, _st), _n in sorted(obs.items()):
+            w.writerow(["# verdict", f"{_cls} -> {_st}", _n])
+        w.writerow(["# note", "rows below are data; lines starting with # are provenance"])
         w.writerow(["arm", "round", "proposed", "intercepted", "interception_rate",
                     "reachability", "hard_retained", "constraints", "backlog"])
         for key, hist in results.items():
@@ -346,7 +360,8 @@ def main():
                 w.writerow([key] + [h[c] for c in ["round", "proposed", "intercepted",
                                                    "interception_rate", "reachability",
                                                    "hard_retained", "constraints", "backlog"]])
-    print(f"\n  → {os.path.relpath(args.out, ROOT)}")
+    print(f"\n  → {os.path.relpath(args.out, ROOT)}"
+          + ("" if eligible else "   ⚠️  marked NOT ELIGIBLE inside the file · 文件内已标记不适格"))
 
 
 if __name__ == "__main__":
