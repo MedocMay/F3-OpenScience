@@ -30,7 +30,9 @@ import argparse
 import json
 import os
 import platform
+import shutil
 import ssl
+import subprocess
 import time
 import sys
 import urllib.error
@@ -186,6 +188,34 @@ def check_tls(r: Report) -> None:
         r.ok("certificate verification · 证书验证", f"cafile: {ssl.get_default_verify_paths().openssl_cafile}")
 
 
+def check_toolchains(r: Report) -> None:
+    """Non-Python toolchains, reported as advisory only. 非 Python 工具链,仅作提醒。
+
+    Quick start steps 5 and 6 need Node and Rust. Nothing in the verification core
+    does, and STATUS.md lists both the TS orchestrator and the desktop shell as
+    never having been run — so a missing toolchain is a smaller world, not a broken
+    one. Reporting it as blocking would repeat the mistake this file already made
+    once with rate limiting: telling someone they cannot run when they can.
+    Quick start 第 5、6 步需要 Node 与 Rust。校验内核一概不需要,而 STATUS.md 把
+    TS orchestrator 和桌面壳都列为「从未运行」—— 所以缺工具链是「能做的事少一些」,
+    不是「坏了」。把它报成阻塞,等于重犯本文件在限流上已经犯过的那个错:
+    告诉一个明明能跑的人他不能跑。
+    """
+    print("\nOptional toolchains · 可选工具链")
+    for cmd, args, what in [("node", ["--version"], "orchestrator-ts (Quick start 5)"),
+                            ("npm", ["--version"], "orchestrator-ts / apps/shell"),
+                            ("cargo", ["--version"], "desktop shell (Quick start 6)")]:
+        exe = shutil.which(cmd)
+        if not exe:
+            r.skip(f"{cmd} · {what}", "not installed — that step is unavailable · 未安装,该步骤不可用")
+            continue
+        try:
+            out = subprocess.run([exe] + args, capture_output=True, text=True, timeout=15)
+            r.ok(f"{cmd} · {what}", out.stdout.strip().splitlines()[0] if out.stdout.strip() else "")
+        except Exception as e:  # noqa: BLE001
+            r.warn(f"{cmd} · {what}", f"{type(e).__name__}: {e}")
+
+
 def check_verifier_capability(r: Report, offline: bool) -> None:
     """Probe through the project's own code path, not around it.
 
@@ -302,6 +332,7 @@ def main() -> int:
         _summarise(r)
         return 1
     check_verifier_capability(r, args.offline)
+    check_toolchains(r)
 
     return _summarise(r)
 
