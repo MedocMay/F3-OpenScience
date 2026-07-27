@@ -32,7 +32,24 @@ class SandboxResult:
         self.limits_unavailable = limits_unavailable or {}
 
 class LocalSandbox:
-    """hardened subprocess。默认限制:CPU 10s、内存 512MB、进程 64、文件 50MB。"""
+    """hardened subprocess。默认限制:CPU 10s、内存 512MB、进程 64、文件 50MB。
+
+    **Not every platform grants every limit.** macOS refuses RLIMIT_AS, so the memory
+    ceiling does not exist there; Windows has no setrlimit at all. Call
+    unsupported_limits() — or read SandboxResult.limits_unavailable — to see what this
+    platform actually enforces. A non-empty result means the isolation is weaker than
+    the defaults above suggest.
+    **并非每个平台都给得起每一道限制。** macOS 拒绝 RLIMIT_AS,内存上限在那里并不存在;
+    Windows 根本没有 setrlimit。用 unsupported_limits()(或读
+    SandboxResult.limits_unavailable)查看本平台真正强制了哪些。非空即表示隔离弱于上面
+    标称的默认值。
+
+    For multi-tenant or untrusted workloads use ContainerSandbox (docker / gVisor),
+    which enforces memory and CPU regardless of host platform. LocalSandbox on a
+    platform with missing limits is a development convenience, not a security boundary.
+    多租户或不可信负载请用 ContainerSandbox(docker / gVisor),它不依赖宿主平台即可强制
+    内存与 CPU。在缺限制的平台上,LocalSandbox 是开发便利,不是安全边界。
+    """
     def __init__(self, cpu_s=10, mem_mb=512, nproc=64, fsize_mb=50, timeout=20, isolate_net=False):
         self.cpu_s, self.mem_mb, self.nproc, self.fsize_mb = cpu_s, mem_mb, nproc, fsize_mb
         self.timeout = timeout

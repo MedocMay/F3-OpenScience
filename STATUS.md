@@ -100,6 +100,17 @@ that stopped being true once CI built it. 本节此前写「从未编译过」,C
 
 - **Windows / macOS install and launch scripts were only statically checked** (syntax,
   placeholder substitution, structure) and have never run on real Windows or macOS.
+- **On macOS `LocalSandbox` has no memory limit.** The kernel refuses `RLIMIT_AS`, so the
+  512 MB ceiling silently does not exist. Until 2026-07-27 this also made `_preexec` raise and
+  took the *whole* sandbox down — every run failed, on the maintainer own machine, and no
+  documented command ran the suite that would have caught it. The sandbox now applies the
+  limits it can and reports the rest via `SandboxResult.limits_unavailable`; the memory test
+  skips with a stated reason. **Do not use `LocalSandbox` for multi-tenant or untrusted
+  workloads on macOS** — use `ContainerSandbox`.
+- macOS 上 `LocalSandbox` **没有内存上限**:内核拒绝 `RLIMIT_AS`。2026-07-27 之前这还会让
+  `_preexec` 抛异常、整个沙箱瘫痪 —— 每一次执行都失败,就在维护者自己的机器上,而没有任何
+  文档中的命令会跑到那个套件。**macOS 上不要把 `LocalSandbox` 用于多租户或不可信负载** ——
+  请用 `ContainerSandbox`。
 - On Windows the sandbox has **no memory or process-count limits** (POSIX `setrlimit` feature);
   it degrades to environment scrubbing + directory jail + timeout. Deploy on Linux for services
   exposed to untrusted users.
