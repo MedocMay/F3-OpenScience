@@ -1,5 +1,5 @@
 {
-  "_doc": "可达性回归集 —— 专门收集『世界允许但校验器容易误杀』的论断。目标不是让它们全部 pass,而是确保它们不被误判为 fabrication(捏造)。",
+  "_doc": "可达性回归集 —— 专门收集『世界允许但校验器容易误杀』的论断。目标不是让它们全部 pass,而是确保它们不被误判为 fabrication(捏造)。  ||  EXPANSION 2026-07-28: the valid side previously contained exactly ONE hard-to-verify citation, and its title was invented (rc-title-only-obscure). An invented title matches nothing at all; a real obscure paper matches something similar at a score below threshold. The near-miss regime — where a threshold error would actually bite — had zero coverage. The rc-hard-* entries below are REAL arXiv papers (their IDs are recorded in _provenance so the 'valid' label is auditable rather than asserted) cited title-only, which is how a citation loses its resolvable identifier in practice. 扩充说明:valid 侧此前只有一条难核验引用,且标题是编造的。编造的标题什么都匹配不上,而真实冷门论文会匹配到相似项、分数低于阈值 —— 阈值判断真正会出错的那个「近似命中区」覆盖为零。下面的 rc-hard-* 都是真实 arXiv 论文(ID 记在 _provenance 里,使 valid 标注可被第三方复核,而非作者断言),以仅标题形式引用 —— 这正是现实中引用丢失可解析标识的方式。  ||  SHELF LIFE: these are hard because the index has not caught up yet. As OpenAlex indexes them they will start to pass, and the set will quietly get easier without any test failing. Re-check periodically; a case that has become easy should be replaced, not kept for the score. 保质期:它们之所以难,是因为索引还没跟上。OpenAlex 收录后它们会开始 pass,而集合会在没有任何测试失败的情况下悄悄变简单。需定期复核 —— 变简单的样本应当替换,而不是留着刷分。",
   "run_id": "reach-1",
   "run_log": "epoch 10 | baseline_acc 0.520 | improved_acc 0.597 | improvement 14.8%\nseed 42",
   "claims": [
@@ -95,6 +95,96 @@
       "text": "mystery_z coefficient",
       "_label": "valid",
       "_note": "★ 语义无法辨识时不得武断否定取值(-999.5 对未知量可能完全合法)。应 unresolved 而非 reject"
+    },
+    {
+      "id": "rc-hard-2605.04273",
+      "type": "citation",
+      "title": "Polyamorphism in Glassy Network Materials",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2605.04273 — real paper; verify at https://arxiv.org/abs/2605.04273",
+      "_note": "★ 真实存在但索引未覆盖(凝聚态 · 近似命中区 score≈0.12)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2603.02466",
+      "type": "citation",
+      "title": "Precursor-Dependent Energetics as a Predictive Principle for Polymorph Selection",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2603.02466 — real paper; verify at https://arxiv.org/abs/2603.02466",
+      "_note": "★ 真实存在但索引未覆盖(材料 · score≈0.10)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2601.18316",
+      "type": "citation",
+      "title": "Effect of ballistic re-solution on the nucleation kinetics of precipitates",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2601.18316 — real paper; verify at https://arxiv.org/abs/2601.18316",
+      "_note": "★ 真实存在但索引未覆盖(核化动力学 · score≈0.10)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2601.15045",
+      "type": "citation",
+      "title": "Coupled gas and bubble dynamics at the solidification front",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2601.15045 — real paper; verify at https://arxiv.org/abs/2601.15045",
+      "_note": "★ 真实存在但索引未覆盖(凝固前沿 · 最高近似分 score≈0.25)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2511.15514",
+      "type": "citation",
+      "title": "Revealing the Atomistic Mechanism of Rare Events in Molecular Dynamics",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2511.15514 — real paper; verify at https://arxiv.org/abs/2511.15514",
+      "_note": "★ 真实存在但索引未覆盖(罕见事件 · score≈0.10)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2510.17187",
+      "type": "citation",
+      "title": "A Standardized Benchmark for Machine-Learned Molecular Dynamics",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2510.17187 — real paper; verify at https://arxiv.org/abs/2510.17187",
+      "_note": "★ 真实存在但索引未覆盖(基准数据集 · score≈0.04)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2607.24515",
+      "type": "citation",
+      "title": "Systematic Analysis of Large Language Models and Transformer-Based Approaches",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2607.24515 — real paper; verify at https://arxiv.org/abs/2607.24515",
+      "_note": "★ 真实存在但索引未覆盖(新预印本 · score≈0.15)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2607.23538",
+      "type": "citation",
+      "title": "Guiding Language Models to Be More Empathetic: Culturally Sensitive Prompting",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2607.23538 — real paper; verify at https://arxiv.org/abs/2607.23538",
+      "_note": "★ 真实存在但索引未覆盖(新预印本 · score≈0.09)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2607.23481",
+      "type": "citation",
+      "title": "Mwando: Leveraging AI to Preserve and Teach shiKomori",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2607.23481 — real paper; verify at https://arxiv.org/abs/2607.23481",
+      "_note": "★ 真实存在但索引未覆盖(★ 低资源语言(科摩罗语)· score=0.00)。必须判 unresolved,绝不可判 fabrication"
+    },
+    {
+      "id": "rc-hard-2607.22859",
+      "type": "citation",
+      "title": "PatiGonit22K: A Comprehensive Dataset for Solving Complex Bengali Mathematical Problems",
+      "text": "prior work cited by title only · 仅以标题引用的前作",
+      "_label": "valid",
+      "_provenance": "arXiv:2607.22859 — real paper; verify at https://arxiv.org/abs/2607.22859",
+      "_note": "★ 真实存在但索引未覆盖(★ 非英语语料 · score=0.00)。必须判 unresolved,绝不可判 fabrication"
     }
   ]
 }

@@ -10,7 +10,7 @@
 
 *第一个产出前有独立校验的开源科研 Agent —— 也是第一个证明了自己没有因为校验而丧失探索能力的系统。*
 
-`0 false-rejection on 7 known-valid claims` · `0 missed fabrication on 4 known-fabricated` · `verification-memory flywheel` · `reachability guarantee` · `model-agnostic` · `self-hostable`
+`0 false-rejection on 17 known-valid claims (11 index-invisible)` · `0 missed fabrication on 4 known-fabricated` · `verification-memory flywheel` · `reachability guarantee` · `model-agnostic` · `self-hostable`
 
 [![CI](https://github.com/MedocMay/F3-OpenScience/actions/workflows/ci.yml/badge.svg)](https://github.com/MedocMay/F3-OpenScience/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-D9A441)](LICENSE)
