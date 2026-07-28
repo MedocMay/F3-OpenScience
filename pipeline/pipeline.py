@@ -12,15 +12,25 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from coe_kernel import apis
 from coe_kernel import exploration as expl
 
+from coe_kernel.apis import _UA          # one identity for every outbound call · 对外只用一个身份
+
+
 def literature(direction: str, n: int = 3, retries: int = 3) -> list[dict]:
     """真实 arXiv 检索。外部 API 会限流/抖动 -> 指数退避重试;仍失败返回 [](上层容错)。"""
     import time as _t
-    url = "http://export.arxiv.org/api/query?" + urllib.parse.urlencode(
+    # Plaintext http times out on some networks while https resolves fine. The same
+    # one-character bug was fixed in coe_kernel/apis.py (9b70097) and missed here, so
+    # topic search kept returning [] — which reads downstream as "search unavailable"
+    # rather than "this call path is broken".
+    # 明文 http 在部分网络上超时,https 正常。同一个字符的 bug 在 coe_kernel/apis.py
+    # (9b70097)修过,这里漏了,于是主题检索一直返回 [] —— 下游读成「检索不可用」,
+    # 而不是「这条调用路径是坏的」。
+    url = "https://export.arxiv.org/api/query?" + urllib.parse.urlencode(
         {"search_query": f"all:{direction}", "start": 0, "max_results": n, "sortBy": "relevance"})
     raw = None
     for i in range(retries):
         try:
-            raw = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "opensci/0.1"}), timeout=30).read().decode()
+            raw = urllib.request.urlopen(urllib.request.Request(url, headers=_UA), timeout=30).read().decode()
             break
         except Exception:
             if i < retries - 1: _t.sleep(2 ** i)

@@ -6,7 +6,17 @@ import json, re, time, hashlib, urllib.request, urllib.parse, os, tempfile, xml.
 
 _CACHE_DIR = os.environ.get("COE_CACHE") or os.path.join(tempfile.gettempdir(), "coe_cache")
 os.makedirs(_CACHE_DIR, exist_ok=True)
-_UA = {"User-Agent": "f3-coe/0.1 (mailto:research@opensci.dev)"}
+# OpenAlex and CrossRef use the mailto to recognise a caller and grant polite-pool
+# limits. The address that used to be hard-coded here was a placeholder on a domain
+# nobody reads — which buys none of the politeness and hands the service an identity
+# it cannot reach. For a project whose whole subject is not claiming what you do not
+# have, that was the wrong default. Claim a contact only when one is configured.
+# OpenAlex 与 CrossRef 靠 mailto 识别调用方并给予 polite pool 待遇。此处原先硬编码的
+# 地址是个占位域名 —— 既拿不到礼遇,又给服务方一个联系不上的身份。对一个主题就是
+# 「别声称你没有的东西」的项目,这个默认值是错的。只在真配了联系方式时才声称。
+_MAILTO = os.environ.get("COE_MAILTO", "").strip()
+_UA = {"User-Agent": "f3-openscience/0.2 (+https://github.com/MedocMay/F3-OpenScience"
+                     + (f"; mailto:{_MAILTO}" if _MAILTO else "") + ")"}
 _fails = {"arxiv": 0, "crossref": 0, "openalex": 0}
 _BREAK = int(os.environ.get("COE_BREAK", "4"))   # 连续失败 >= 4 触发熔断
 

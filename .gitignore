@@ -58,3 +58,7 @@ Thumbs.db
 *.swp
 
 *.bak
+
+*.staging/
+
+*.staging/
