@@ -16,6 +16,48 @@ from coe_kernel import exploration as expl
 from coe_kernel.apis import _UA          # one identity for every outbound call · 对外只用一个身份
 
 
+_SPLIT_RE = re.compile(r"\b(?:for|of|in|on|with|to|using|via|and|under|from|between)\b", re.I)
+
+
+def _query_ladder(direction: str) -> list[tuple[str, str]]:
+    """Progressively looser arXiv queries, strictest first. 由严到松的查询阶梯。
+
+    `all:<whole sentence>` applies the field prefix to the first word only and lets
+    the rest match loosely. That is why "few-shot reinforcement learning for battery
+    health" returned FADL — a paper on federated learning for electronic health
+    records — which matched on the word "health". Three loosely-related papers were
+    then cited as "prior work on battery health", and the relevance layer was right
+    to score them 0.00.
+    `all:<整句>` 只把字段前缀作用于第一个词,其余松散匹配。这就是为什么
+    「few-shot reinforcement learning for battery health」会返回 FADL —— 一篇联邦
+    学习做电子健康病历的论文 —— 它命中的是 health 这个词。那三篇随后被当作
+    「prior work on battery health」引用,而相关性层判 0.00 是对的。
+
+    Quoting the phrases and ANDing them fixes precision, but the strictest form often
+    returns nothing ("few-shot reinforcement learning" is not a phrase anyone writes
+    in a title). English noun phrases are head-final, so the next rung keeps the last
+    two words of each. Only if both miss does it fall back to the old loose form.
+    把短语加引号再 AND 解决了精度,但最严的一级常常返回空(没人会把
+    「few-shot reinforcement learning」原样写进标题)。英语名词短语中心语在后,
+    所以下一级保留每个短语的后两个词。两级都落空才回落到原先的松散形式。
+
+    The rung that produced the result travels with each paper as `_match`. A caller
+    that cites a `loose` hit as prior work is making a much weaker claim than one
+    citing a `phrases` hit, and it should be able to tell the difference.
+    命中的级别随每篇论文以 `_match` 字段带出。把 `loose` 命中当作前作引用,与把
+    `phrases` 命中当作前作引用,是强度差很远的两种主张,调用方应当分得清。
+    """
+    parts = [" ".join(p.split()) for p in _SPLIT_RE.split(direction) if p.strip()]
+    rungs = []
+    if len(parts) >= 2:
+        rungs.append(("phrases", " AND ".join(f'all:"{p}"' for p in parts)))
+        heads = [" ".join(p.split()[-2:]) if len(p.split()) > 2 else p for p in parts]
+        if heads != parts:
+            rungs.append(("heads", " AND ".join(f'all:"{h}"' for h in heads)))
+    rungs.append(("loose", f"all:{direction}"))
+    return rungs
+
+
 def literature(direction: str, n: int = 3, retries: int = 3) -> list[dict]:
     """真实 arXiv 检索。外部 API 会限流/抖动 -> 指数退避重试;仍失败返回 [](上层容错)。"""
     import time as _t
@@ -26,8 +68,19 @@ def literature(direction: str, n: int = 3, retries: int = 3) -> list[dict]:
     # 明文 http 在部分网络上超时,https 正常。同一个字符的 bug 在 coe_kernel/apis.py
     # (9b70097)修过,这里漏了,于是主题检索一直返回 [] —— 下游读成「检索不可用」,
     # 而不是「这条调用路径是坏的」。
+    for _level, _q in _query_ladder(direction):
+        _hits = _fetch(_q, n, retries)
+        if _hits:
+            for h in _hits:
+                h["_match"] = _level
+            return _hits
+    return []
+
+
+def _fetch(query: str, n: int, retries: int) -> list[dict]:
+    import time as _t
     url = "https://export.arxiv.org/api/query?" + urllib.parse.urlencode(
-        {"search_query": f"all:{direction}", "start": 0, "max_results": n, "sortBy": "relevance"})
+        {"search_query": query, "start": 0, "max_results": n, "sortBy": "relevance"})
     raw = None
     for i in range(retries):
         try:

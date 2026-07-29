@@ -47,18 +47,58 @@ All of the following are reproducible in this repository — run `make test` (14
 
 ## 3. What has **not** been verified (important)
 
-### 🔴 Never run end-to-end with a real LLM
+### 🟡 Run end-to-end with a real LLM once — 2026-07-29
 
-The development environment had no model API credentials. Therefore:
+Until this date the entry above read "never". The obstacle was not a missing credential: the
+pipeline never called `ModelRouter` at all, and the draft was string-concatenated. Wiring it up
+and running against DeepSeek produced `draft_source: deepseek:deepseek-chat`, numbers taken
+from the sandbox log rather than invented, and citations that verified.
 
-- The **model router**'s 8 providers were verified only for routing resolution and a local
-  mock HTTP call. **Not one real cloud provider has ever been called.**
-- The **LLM relevance scorer** (CoE layer 4) is implemented but has never been run against a real model.
-- **The pipeline's "generation" stage is templated**, not real model output.
-  `_EXPERIMENT` is a fixed-seed placeholder script that always emits 14.8%.
+What that run does **not** establish, and why this is 🟡 rather than green:
 
-**This means: the verification, flywheel, and reachability mechanisms across the whole chain
-are tested — but "an AI actually writing a research draft" has never been verified.**
+- **One run, one provider, one direction.** None of this is a distribution.
+- The first run showed **no hallucination because none was possible** — the prompt handed the
+  model the retrieved papers, so it cited what it was given. That demonstrates retrieval
+  augmentation working, not the verification layer working.
+- With the retrieval crutch removed, the model's failure mode was **misattribution, not
+  fabrication**: it cited arXiv:2305.18290 — a real and heavily-cited paper (Direct Preference
+  Optimization) — to support a claim about few-shot classification in data-limited domains,
+  which that paper says nothing about. An authoritative registry cannot catch this, because the
+  registry confirms the paper exists. Existence and support are different properties.
+- Layer 4 did gate it (`manual`, relevance 0.00) while an accurate citation of the same paper
+  passed. That is **n=1**; see below.
+- `_EXPERIMENT` is still a fixed-seed placeholder. The model wrote about a synthetic result.
+
+### 🔴 Layer 4 is a hard gate only when a model is configured
+
+`get_scorer()` returns an LLM scorer when a provider is available and a token-overlap heuristic
+otherwise. The heuristic **annotates and lets the claim pass** (`low_relevance: True`); only the
+LLM backend blocks. So in any deployment without model credentials, a misattributed citation —
+a real paper cited for something it does not say — reaches the signing gate unimpeded.
+
+The badge `no fabricated citation passes the signing gate` is literally true, since
+misattribution is not fabrication. It nonetheless invites a stronger reading than the code
+supports. With a provider configured, set `COE_RELEVANCE=llm` to make layer 4 blocking.
+
+**The relevance layer's accuracy rests on n=1.** `experiments/relevance/run_batch.py` exists to
+fix that: nine real papers, each paired with an accurate claim drawn from its own abstract and a
+misattributed one drawn from a different real paper's abstract, reporting both misattributions
+missed and accurate citations false-rejected. It has not yet been run against a real model.
+
+### 🟡 Retrieval finds adjacent work, and the pipeline over-claims it
+
+`literature()` used `all:<whole sentence>`, which applies the field prefix to the first word and
+lets the rest match loosely. "few-shot reinforcement learning for battery health" therefore
+returned a paper on federated learning for **electronic health records** — it matched on the
+word "health". A three-rung query ladder (quoted phrases → head nouns → the old loose form,
+recording which rung hit as `_match`) fixed the worst of that.
+
+What remains is not a retrieval bug. `hypothesize()` labels every retrieved paper
+`prior work on {direction}` — an assertion the pipeline has no basis for. A paper that is merely
+adjacent (battery degradation in sensor networks, when the direction is few-shot RL for battery
+health) is not prior work on that direction, and layer 4 is right to say so. The template path
+has no notion of citing a paper **for** a specific assertion, which is what a citation is.
+Distinguishing `support` from `context` claims is open work.
 
 ### 🔴 Never produced an actual research result
 
