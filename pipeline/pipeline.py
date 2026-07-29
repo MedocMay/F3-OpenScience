@@ -150,6 +150,15 @@ def _draft_via_model(direction: str, papers: list[dict], exp: dict) -> tuple[str
     STATUS.md 里「从未用真实 LLM 端到端跑过」这一条,只能由一次**能自证走了哪条路**
     的运行来撤销。
     """
+    # A regression suite must not change its verdict because the operator happens to
+    # have an API key. Model-backed generation is opt-out here and pinned off in
+    # tests: real-model behaviour belongs in an experiment, not in a suite whose job
+    # is to say whether a code change broke something.
+    # 回归套件不能因为操作者恰好有 API key 就改变结论。模型生成在此可关闭,并在测试里
+    # 钉死为关 —— 真实模型的行为属于实验,不属于一个职责是「代码改动有没有弄坏东西」
+    # 的套件。
+    if os.environ.get("OPENSCI_PIPELINE_MODEL", "").strip() in ("0", "off", "false"):
+        return None, "template (model generation disabled · 已显式关闭)"
     if not _ANY_MODEL_KEY():
         return None, ("template (no model configured · 未配置模型 —— set one of "
                       + "/".join(k.split("_API")[0] for k in _KEY_ENV) + "_API_KEY)")

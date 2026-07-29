@@ -98,6 +98,16 @@ def net_ok() -> bool:
     return can_judge_citations()
 
 
+# Pin generation to the template for every suite that imports this. Subprocesses
+# inherit it, so the RPC path is covered too.
+# 凡是 import 本模块的套件,生成一律钉死为模板。子进程继承该变量,RPC 路径同样覆盖。
+os.environ.setdefault("OPENSCI_PIPELINE_MODEL", "0")
+# Layer 4 likewise: a suite must not gate differently because a key is present.
+# Real-model relevance is measured in experiments/relevance/, where it belongs.
+# 第 4 层同理:套件不能因为有没有 key 而门控得不一样。真实模型的相关性表现在
+# experiments/relevance/ 里测,那才是它该在的地方。
+os.environ.setdefault("COE_RELEVANCE", "heuristic")
+
 _skipped: list[tuple[str, str]] = []
 
 

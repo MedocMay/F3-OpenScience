@@ -38,7 +38,25 @@ class LLMRelevance(RelevanceScorer):
         return float(m.group(0)) if m else 0.0
 
 def get_scorer() -> RelevanceScorer:
-    """配置了模型(OPENSCI_MODEL 或任一 provider key/本地 endpoint)-> LLM;否则降级 heuristic。"""
+    """配置了模型(OPENSCI_MODEL 或任一 provider key/本地 endpoint)-> LLM;否则降级 heuristic。
+
+    COE_RELEVANCE=heuristic|llm overrides the auto-detection.
+    COE_RELEVANCE=heuristic|llm 可显式覆盖自动判断。
+
+    The override exists because auto-detection makes a verdict depend on whether the
+    operator happens to hold an API key. That is fine for a deployment and wrong for
+    a regression suite: whether a model considers paper X to support claim Y is not
+    a property of the code under test, and a suite that changes its answer with the
+    environment cannot tell anyone whether a change broke something.
+    这个开关的必要性在于:自动判断会让结论取决于操作者手上有没有 API key。对一次部署
+    这没问题,对回归套件是错的 —— 某个模型认不认为论文 X 支撑主张 Y,不是被测代码的
+    属性,而一个会随环境改变答案的套件,没法告诉任何人某次改动有没有弄坏东西。
+    """
+    forced = os.environ.get("COE_RELEVANCE", "").strip().lower()
+    if forced in ("heuristic", "off"):
+        return HeuristicRelevance()
+    if forced == "llm":
+        return LLMRelevance()
     avail = ModelRouter.available()
     if os.environ.get("OPENSCI_MODEL") or any(avail.values()):
         return LLMRelevance()

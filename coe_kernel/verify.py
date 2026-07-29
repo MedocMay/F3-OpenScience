@@ -1,4 +1,5 @@
 """4 层引用核验 + 数字溯源 + 证据链门控。CoE 的判定核心。"""
+import os
 import re
 from . import apis
 from .relevance import get_scorer
@@ -7,7 +8,19 @@ from . import dimensions as dims
 from . import novelty as nov
 from . import domains as dom
 
-_SCORER = get_scorer()
+# Resolved per call, not at import. Binding the scorer at import time made the
+# backend depend on which module the test happened to import first — an ordering
+# landmine, and one that silently decides whether layer 4 gates or merely annotates.
+# 每次调用时解析,而非导入时。导入时绑定会让后端取决于测试恰好先 import 了哪个模块 ——
+# 一颗顺序地雷,而且它无声地决定了第 4 层是硬门控还是仅标注。
+_SCORER_CACHE: dict = {}
+
+
+def _scorer():
+    key = (os.environ.get("COE_RELEVANCE", ""), os.environ.get("OPENSCI_MODEL", ""))
+    if key not in _SCORER_CACHE:
+        _SCORER_CACHE[key] = get_scorer()
+    return _SCORER_CACHE[key]
 
 REL_THRESHOLD = 0.10   # 相关性下限(heuristic;生产换 LLM 相关性打分)
 
@@ -49,13 +62,13 @@ def verify_citation(claim: dict) -> dict:
                       layers, failure_kind="verification_gap")
 
     # Layer 4:相关性(可插拔)。LLM 后端:低相关 -> 硬门控(manual);启发式:仅标注。
-    rel = _SCORER.score(claim.get("text", ""), resolved_title or "", claim.get("abstract", ""))
+    rel = _scorer().score(claim.get("text", ""), resolved_title or "", claim.get("abstract", ""))
     if rel == -1.0:                       # LLM 不可达 -> 回退 heuristic 标注语义
         rel = max(apis._token_overlap(claim.get("text", ""), resolved_title or ""),
                   apis._token_overlap(claim.get("title", ""), resolved_title or ""))
         llm_gate = False
     else:
-        llm_gate = _SCORER.is_llm
+        llm_gate = _scorer().is_llm
     layers["llm_relevance"] = round(rel, 3)
     ref = (f"arxiv:{claim['arxiv_id']}" if claim.get("arxiv_id") else
            (f"doi:{claim['doi']}" if claim.get("doi") else f"title:{(resolved_title or '')[:40]}"))
