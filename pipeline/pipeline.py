@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from cloud.sandbox import get_sandbox
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from coe_kernel import apis
+from coe_kernel.extract import extract_claims
 from coe_kernel import exploration as expl
 
 from coe_kernel.apis import _UA          # one identity for every outbound call · 对外只用一个身份
@@ -96,6 +97,82 @@ def code_and_run(timeout: int = 20) -> dict:
     gain = m.group(1) if m else None
     return {"run_log": log, "gain": gain, "code": textwrap.dedent(_EXPERIMENT)}
 
+_DRAFT_PROMPT = """You are drafting the results section of a short research note.
+
+Direction: {direction}
+
+Retrieved prior work (real, from arXiv):
+{papers}
+
+Experiment log produced by a sandboxed run:
+{run_log}
+
+Write 4-6 sentences. Cite prior work inline using arXiv IDs in the form [arXiv:XXXX.XXXXX].
+State the measured improvement. Do not invent numbers that are not in the log.
+"""
+
+
+# Providers the router knows how to reach, and the variable each one needs.
+# 路由认识的供应商,以及各自需要的环境变量。
+_KEY_ENV = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY",
+            "MOONSHOT_API_KEY", "DASHSCOPE_API_KEY", "GEMINI_API_KEY")
+
+
+def _ANY_MODEL_KEY() -> bool:
+    """Is any provider configured at all? 到底配了哪家没有?
+
+    Without this the router dutifully walks its whole fallback chain on every run,
+    collecting a 401 from each provider in turn. That is several seconds of network
+    spent proving something a single environment lookup already knows — and it makes
+    "no model configured" look like "every model rejected us", which are different
+    findings.
+    没有这一步,路由会在每次运行时老老实实走完整条回退链,挨家收一个 401。那是花几秒
+    网络去证明一件查一下环境变量就知道的事 —— 而且会让「没配模型」看起来像「所有模型
+    都拒绝了我们」,那是两种不同的结论。
+    """
+    return any(os.environ.get(k, "").strip() for k in _KEY_ENV)
+
+
+def _draft_via_model(direction: str, papers: list[dict], exp: dict) -> tuple[str | None, str]:
+    """Ask the configured model to write the draft. Returns (text, provenance).
+
+    请配置好的模型撰写 draft,返回 (文本, 来源说明)。
+
+    Returns (None, reason) when no model is reachable, and the caller falls back to
+    the template — but the reason travels with the result and lands in the report as
+    `draft_source`. A run that quietly used the template while the operator believed
+    a model wrote it would be this project's own failure mode one level up: a
+    stand-in reported as the real thing. STATUS.md's "never run end-to-end with a
+    real LLM" can only be retired by a run that can prove which path it took.
+    没有可用模型时返回 (None, 原因),调用方回落到模板 —— 但那个原因会跟着结果走,
+    最终出现在报告的 `draft_source` 字段里。如果一次运行悄悄用了模板,而操作者以为
+    是模型写的,那就是本项目自己的失效模式上移一层:替身被当成了真身。
+    STATUS.md 里「从未用真实 LLM 端到端跑过」这一条,只能由一次**能自证走了哪条路**
+    的运行来撤销。
+    """
+    if not _ANY_MODEL_KEY():
+        return None, ("template (no model configured · 未配置模型 —— set one of "
+                      + "/".join(k.split("_API")[0] for k in _KEY_ENV) + "_API_KEY)")
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from model.router import ModelRouter
+    except Exception as e:                                  # noqa: BLE001
+        return None, f"template (router unavailable · 路由不可用: {type(e).__name__})"
+
+    r = ModelRouter()
+    prompt = _DRAFT_PROMPT.format(
+        direction=direction,
+        papers="\n".join(f"- [arXiv:{p['arxiv_id']}] {p['title']}" for p in papers) or "(none)",
+        run_log=exp["run_log"] or "(no log)")
+    try:
+        out = r.complete([{"role": "user", "content": prompt}])
+    except Exception as e:                                  # noqa: BLE001
+        return None, f"template (model call raised · 模型调用抛错: {type(e).__name__})"
+    if not out.get("ok") or not out.get("text", "").strip():
+        return None, f"template (model unavailable · 模型不可用: {out.get('error', 'empty response')})"
+    return out["text"].strip(), out["model_used"]
+
+
 def run_pipeline(direction: str, injected: list) -> dict:
     guard = any(l.get("kind") == "fake_cite" for l in (injected or []))
     papers = literature(direction)
@@ -105,9 +182,23 @@ def run_pipeline(direction: str, injected: list) -> dict:
     if exp["gain"]:
         claims.append({"id": "num-gain", "type": "number", "value": exp["gain"],
                        "text": f"we observe an improvement of {exp['gain']}%"})
-    draft = (f"# {direction}\n\nBased on {len(papers)} retrieved works "
-             + " ".join(f"[{c['id']}]" for c in cites)
-             + f", we observe an improvement of {exp['gain']}%.")
+    # Real model first; template only as a declared fallback.
+    # 优先用真实模型;模板只作为**声明过的**回落。
+    model_draft, draft_source = _draft_via_model(direction, papers, exp)
+    if model_draft:
+        draft = f"# {direction}\n\n{model_draft}"
+        # Whatever the model cited goes through the same verification as anything
+        # else — including citations it invented. That is the point: the draft is
+        # now something a model actually wrote, not something we assembled for it.
+        # 模型引用了什么,就和其他一切一样走同一套校验 —— 包括它自己编出来的引用。
+        # 这正是重点:draft 现在是模型真写的,而不是我们替它拼的。
+        for extra in extract_claims(draft):
+            if extra["id"] not in {c["id"] for c in claims}:
+                claims.append(extra)
+    else:
+        draft = (f"# {direction}\n\nBased on {len(papers)} retrieved works "
+                 + " ".join(f"[{c['id']}]" for c in cites)
+                 + f", we observe an improvement of {exp['gain']}%.")
     # R5:探索预算 —— 强制给低先验假设留配额,并如实报告达成率
     selected = expl.allocate(_candidate_hypotheses(direction, papers))
     exploration = expl.measure(selected)
@@ -128,6 +219,7 @@ def run_pipeline(direction: str, injected: list) -> dict:
     draft += "\n" + "\n".join(c["text"] for c in selected)
 
     return {"draft": draft, "claims": claims, "run_log": exp["run_log"], "code": exp["code"],
+            "draft_source": draft_source,
             "guard_on": guard, "n_papers": len(papers), "exploration": exploration,
             "data_sources": ["arXiv", "CrossRef/DataCite", "OpenAlex"],
             "papers": papers}
