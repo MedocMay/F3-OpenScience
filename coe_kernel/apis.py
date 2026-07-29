@@ -40,6 +40,46 @@ _BREAK = int(os.environ.get("COE_BREAK", "4"))   # 连续失败 >= 4 触发熔�
 # 重试与熔断阈值互为代偿:有 2 次重试后,一次熔断计数要花 3 次尝试,于是 _BREAK=4
 # 现在买到的耐心约等于过去的 12 次。阈值本身因此不必上调 —— 上调只会延长在一个
 # 真正宕掉的服务上浪费的时间。
+# Offline replay. When COE_OFFLINE is set, a cache miss is an error, never a
+# request. 离线复放:设了 COE_OFFLINE 时,缓存未命中是错误,绝不发请求。
+_OFFLINE = os.environ.get("COE_OFFLINE", "").strip() not in ("", "0", "false", "False")
+
+
+class FixtureMiss(BaseException):
+    """COE_OFFLINE is set and this URL is not in the recorded fixture.
+
+    设了 COE_OFFLINE,而这个 URL 不在录制的 fixture 里。
+
+    Derived from BaseException, not Exception — deliberately, and this is the whole
+    point of the class. Every generic ``except Exception`` in this codebase exists to
+    turn a runtime failure into "unknown", which is correct for a service that is
+    down and wrong for a hole in a recording. If a fixture gap could be caught by
+    one of those handlers, an offline run would report "service unavailable" for
+    what is actually an incomplete fixture — the verifier's own blind spot dressed
+    up as a fact about the world, which is the exact conflation this project exists
+    to name. A missing fixture is a harness configuration error and must reach the
+    operator uncaught.
+    刻意继承 BaseException 而非 Exception,这正是本类存在的意义。本代码库里每一个
+    宽泛的 ``except Exception`` 都是为了把运行时失败转成「未知」—— 对一个宕掉的
+    服务这是对的,对录制里的一个窟窿这是错的。若 fixture 缺口能被那些处理器接住,
+    离线跑就会把「录制不全」报成「服务不可用」,即把校验器自身的盲区装扮成关于世界
+    的事实 —— 这正是本项目要指出的那种混同。缺 fixture 是装置配置错误,必须原样
+    抵达操作者。
+    """
+
+    def __init__(self, url: str, svc: str, path: str):
+        super().__init__(
+            f"\n  COE_OFFLINE is set but this response was never recorded."
+            f"\n  设了 COE_OFFLINE,但这个响应从未被录制过。"
+            f"\n    service · 服务 : {svc}"
+            f"\n    url            : {url}"
+            f"\n    expected file  : {path}"
+            f"\n"
+            f"\n  This is an incomplete fixture, NOT an unavailable service."
+            f"\n  这是 fixture 不全,不是服务不可用。"
+            f"\n  Re-record with · 重新录制:  python3 scripts/record_fixtures.py --fresh\n")
+
+
 _RETRY = int(os.environ.get("COE_RETRY", "2"))
 _RETRY_BASE = float(os.environ.get("COE_RETRY_BASE", "1.0"))
 
@@ -93,6 +133,14 @@ def _get(url: str, svc: str, timeout: int = 15):
         cached = json.load(open(cp))
         # 缓存回放必须保留"权威否定"语义,否则第二次查询会退化为"未知"
         return cached, ("not_found" if cached.get("not_found") else "cache")
+    if _OFFLINE:
+        # Fail closed. A fixture that silently falls through to the network is not
+        # offline reproduction — it is the same run with extra steps, and the gap
+        # stays invisible until the day the network is genuinely gone.
+        # 失败即关闭。会悄悄回落网络的 fixture 不叫离线复现,只是绕了个圈的联网跑,
+        # 而那个缺口会一直隐形,直到网络真的没了的那天。
+        raise FixtureMiss(url, svc, cp)
+
     reason = "error:unknown"
     for attempt in range(_RETRY + 1):
         _throttle(svc)      # 缓存未命中才走到这里,此时才需要限速;每次重试同样遵守
@@ -182,12 +230,31 @@ def check_doi(doi: str):
         return False, None            # 两家登记处都权威否定 -> 确证不存在
     return None, None                 # 网络/熔断 -> 未知,不得判为捏造
 
+# OpenAlex rejects its own search syntax characters with HTTP 400. A physics or
+# maths title carries them routinely — `$X(3872)\to K_{S}^{0}$` and the like — so
+# every such paper failed the index layer outright. Not "the index does not cover
+# it": the request never reached the index, because we sent something malformed.
+# The verifier was reporting its own broken query as an absence in the world.
+# OpenAlex 对自己检索语法里的字符返回 HTTP 400。物理、数学的标题里这些字符是常态 ——
+# `$X(3872)\to K_{S}^{0}$` 之类 —— 于是每一篇这样的论文都直接过不了索引层。
+# 这不是「索引没收录」:请求根本没到索引,因为我们发出去的东西是畸形的。
+# 校验器把自己发坏的查询,报告成了世界里的一个缺失。
+#
+# Strip the syntax, keep the words: the formula's tokens still carry match signal.
+# 去语法、留词:公式里的 token 仍然带有匹配信号。
+_QUERY_SYNTAX = re.compile(r'[$"\\{}^_*()]')
+
+
+def _sanitise_query(title: str) -> str:
+    return " ".join(_QUERY_SYNTAX.sub(" ", title).split())
+
+
 def match_openalex(title: str):
     """Layer 3:OpenAlex 标题匹配(Semantic Scholar 的可替换等价物,无需 key)。
     返回 (matched, best_title, score)。score = 标题 token 重合度。"""
     if not title:
         return False, None, 0.0
-    q = urllib.parse.quote(title[:200])
+    q = urllib.parse.quote(_sanitise_query(title)[:200])
     data, src = _get(f"https://api.openalex.org/works?search={q}&per_page=1", "openalex")
     if not data:
         return None, None, 0.0

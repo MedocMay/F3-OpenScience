@@ -83,6 +83,53 @@ def size_of(d: pathlib.Path) -> tuple[int, int]:
     return len(files), sum(f.stat().st_size for f in files)
 
 
+def verify_offline(target: pathlib.Path, names: list[str]) -> list[tuple[str, str]]:
+    """Replay every suite against the fixture with the network closed off.
+
+    在网络关闭的前提下,用 fixture 复放每一个套件。
+
+    Counting skips was not a completeness check, only a proxy for one — and it
+    missed the case that actually happened: a suite that ran to completion while
+    every request failed. test_reachability recorded ONE response for 21 claims and
+    was marked ok, because under rate limiting every lookup degraded to unknown and
+    the suite's expectations for hard claims are precisely "unresolved". It passed
+    for the wrong reason and recorded almost nothing.
+    数跳过次数不是完整性检查,只是它的一个代理指标 —— 而且恰好漏掉了真正发生的
+    那种情况:套件跑完了,但每一个请求都失败了。test_reachability 为 21 条论断只录到
+    1 个响应却被标为 ok,因为限流下每次查询都降级为未知,而该套件对难核验论断的
+    期望恰恰就是 unresolved。它因为错误的理由通过,同时几乎什么都没录到。
+
+    So stop inferring completeness and measure it: if the fixture can carry every
+    suite with COE_OFFLINE set, it is complete. If it cannot, FixtureMiss names the
+    exact URL that is missing. This is the same discipline the project applies to
+    its verifier — do not report a conclusion you have not actually reached.
+    所以不再推断完整性,直接测量它:如果这份 fixture 能在 COE_OFFLINE 下带动全部
+    套件,它就是完整的;带不动的话,FixtureMiss 会精确点出缺哪个 URL。这与本项目
+    对校验器的要求是同一条纪律 —— 别报告一个你并没有真正得出的结论。
+    """
+    print("\nverifying offline · 离线验证 (COE_OFFLINE=1, network closed · 网络关闭)")
+    env = dict(os.environ)
+    env["COE_CACHE"] = str(target)
+    env["COE_OFFLINE"] = "1"
+    bad = []
+    for n in names:
+        print(f"  {n:20s} ", end="", flush=True)
+        p = subprocess.run([sys.executable, f"tests/{n}.py"],
+                           cwd=ROOT, env=env, capture_output=True, text=True)
+        out = p.stdout + p.stderr
+        if p.returncode != 0:
+            why = "FixtureMiss" if "FixtureMiss" in out else f"exit={p.returncode}"
+            bad.append((n, out.strip().splitlines()[-1] if out.strip() else why))
+            print(f"MISS  {why}")
+        elif "SKIPPED, not run" in p.stdout:
+            bad.append((n, "skipped on replay — its responses were never recorded "
+                           "· 复放时跳过,说明它的响应从未被录到"))
+            print("SKIP  replayed but ran nothing · 复放了但一个测试没跑")
+        else:
+            print("ok")
+    return bad
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("suites", nargs="*", help="suite names; default = all in tests/SUITES")
@@ -170,7 +217,15 @@ def main() -> int:
             for line in (out + err).strip().splitlines()[-6:]:
                 print(f"         {line}")
 
-    complete = not failed and not skipped
+    # Completeness is now decided by replay, not by counting what looked wrong.
+    # 完整性现在由复放判定,而不是靠数「看起来不对的东西」。
+    unreplayable = verify_offline(target, targets)
+    complete = not failed and not unreplayable
+    if unreplayable:
+        print(f"\n  ⚠️  {len(unreplayable)} suite(s) cannot be replayed offline · 项无法离线复放")
+        for n, why in unreplayable:
+            print(f"      {n}: {why[:96]}")
+
     if args.fresh:
         if complete:
             if FIXTURE.exists():
@@ -191,6 +246,7 @@ def main() -> int:
         "suites_recorded": targets,
         "suites_failed": [s for s, _, _ in failed],
         "suites_skipped_empty": skipped,
+        "suites_not_replayable": [n for n, _ in unreplayable],
         "complete": complete,
         "responses": after_n,
         "bytes": after_b,
@@ -202,7 +258,7 @@ def main() -> int:
     }, ensure_ascii=False, indent=2) + "\n")
     print(f"\nmanifest · {MANIFEST.relative_to(ROOT)}")
 
-    return 1 if (failed or skipped) else 0
+    return 1 if (failed or unreplayable) else 0
 
 
 if __name__ == "__main__":
