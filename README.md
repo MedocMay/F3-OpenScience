@@ -178,6 +178,53 @@ Real run transcript · 真实运行录屏:[docs/DEMO.md](docs/DEMO.md)
 
 ---
 
+## How to read this repository · 怎么读这个仓库
+
+Sixteen top-level directories, and the argument lives in three of them. The tree below
+is the map; the section after it is the terrain.
+十六个顶层目录,而论点只住在其中三个里。下面这张是地图,再往下那一节是地形。
+
+| | What it is · 是什么 | Run by `make test`? |
+|---|---|---|
+| **Load-bearing · 承重** | | |
+| `coe_kernel/` | The verification kernel — four-layer citation checking, derivation recomputation, dimensional and domain-physics criteria. Everything this project claims rests here.<br>校验内核 —— 四层引用核验、推导重算、量纲与领域物理判据。本项目的一切主张都压在这里。 | yes |
+| `experiments/narrowing/` | The A/B harness behind the central claim: conflating "cannot verify" with "false" costs reachable space.<br>支撑核心主张的 A/B 装置:把「核验不了」与「为假」混同,会付出可达空间的代价。 | no — run it directly |
+| `experiments/relevance/` | Measures whether layer 4 tells a misattributed citation from an accurate one.<br>测量第 4 层能否区分张冠李戴与准确引用。 | no — run it directly |
+| `tests/` | 14 suites, listed in `tests/SUITES`, which `make test` and CI both read.<br>14 个套件,清单在 `tests/SUITES`,`make test` 与 CI 共读它。 | — |
+| **Scaffolding · 脚手架**<br>runs, but not where the argument is<br>能跑,但论点不在这里 | | |
+| `pipeline/` | Retrieval → hypothesis → sandboxed run → draft. Generation calls a model when one is configured, otherwise a template.<br>检索 → 假设 → 沙箱执行 → draft。配了模型就调模型,否则用模板。 | yes |
+| `orchestrator/` | Python reference brain: state machine, autonomy levels, gates, flywheel.<br>Python 参考大脑:状态机、自主度、门控、飞轮。 | yes |
+| `memory/` | Experience store and the flywheel that writes back to it.<br>经验库,以及往里回写的飞轮。 | yes |
+| `model/` | Provider-agnostic router. BYOK, six clouds plus local Ollama / vLLM.<br>模型无关路由。BYOK,六家云端加本地 Ollama / vLLM。 | yes |
+| `cloud/` | Multi-tenant vault, tenancy, storage abstraction, sandbox.<br>多租户密管、租户隔离、存储抽象、沙箱。 | yes |
+| **Roadmap · 路线图**<br>present and unverified — see STATUS.md<br>在仓库里但未经验证 —— 见 STATUS.md | | |
+| `apps/shell/` | Tauri desktop shell. Builds in CI; **has never been run.**<br>Tauri 桌面壳。CI 能构建;**从未运行过。** | no |
+| `orchestrator-ts/` | TS brain. Typechecks; the end-to-end path is unverified.<br>TS 大脑。类型检查通过;端到端路径未验证。 | typecheck only |
+| `deploy/` (docker) | `run-local.sh` starts a gateway. **`docker compose up` has never been executed.**<br>`run-local.sh` 能起网关。**`docker compose up` 从未执行过。** | no |
+| `packaging/` | Installer scaffolding for three platforms. Statically checked only.<br>三平台安装脚手架。仅做过静态检查。 | no |
+
+**Shortest path to seeing what this project is about** — three commands, no model key needed:
+**看清这个项目在讲什么的最短路径** —— 三条命令,不需要模型凭据:
+
+```bash
+make doctor                                        # can this machine judge? · 这台机器判得了吗
+python experiments/narrowing/run_experiment.py     # the central claim, measured · 核心主张的实测
+cat docs/REACHABILITY.md                           # why it is built this way · 为什么这样建
+```
+
+A note on why the roadmap directories are here at all. They are not finished work presented as
+finished — `STATUS.md` names each one and says what has never been run. Deleting them would make
+the repository look tidier and would hide the shape of what is intended; leaving them undocumented
+would be the actual dishonesty. The rule this project holds itself to is the same one it applies
+to citations: an absence of verification is worth stating plainly, and is not the same thing as a
+claim of success.
+关于路线图那几个目录为何在此。它们不是把未完成的工作当成完成的来陈列 —— `STATUS.md` 逐个点名,
+并写明各自从未运行过什么。删掉它们会让仓库看起来更整洁,同时藏起意图的形状;而留着却不说明,
+才是真正的不诚实。本项目对自己守的规矩,与它对引用守的是同一条:核验的缺席值得如实说出,
+它与「声称成功」不是一回事。
+
+---
+
 ## Architecture · 架构
 
 ```
