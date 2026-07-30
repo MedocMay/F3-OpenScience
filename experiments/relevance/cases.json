@@ -1,0 +1,74 @@
+[
+  {
+    "arxiv_id": "physics/9708012",
+    "title": "Protein structure prediction as a hard optimization problem: the genetic algorithm approach",
+    "accurate": "Protein structure prediction can be shown to be an NP-hard problem; the number of conformations grows exponentially with the number of residues. The native conformations of proteins occupy a very small subset of these, h",
+    "misattributed": "Continuous-time quantum error correction (CTQEC) is an approach to protecting quantum information from noise in which both the noise and the error correcting operations are treated as processes that are continuous in tim",
+    "misattribution_source": "arXiv:1311.2485 — Continuous-time quantum error correction",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "1311.2485",
+    "title": "Continuous-time quantum error correction",
+    "accurate": "Continuous-time quantum error correction (CTQEC) is an approach to protecting quantum information from noise in which both the noise and the error correcting operations are treated as processes that are continuous in tim",
+    "misattributed": "Glacier modeling is crucial for quantifying the evolution of cryospheric processes. At the same time, uncertainties hamper process understanding and predictive accuracy. Here, we suggest improving glacier mass balance si",
+    "misattribution_source": "arXiv:2502.09314 — Glacier data assimilation on an Arctic glacier: Learning fro",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "2502.09314",
+    "title": "Glacier data assimilation on an Arctic glacier: Learning from large ensemble twin experiments",
+    "accurate": "Glacier modeling is crucial for quantifying the evolution of cryospheric processes. At the same time, uncertainties hamper process understanding and predictive accuracy. Here, we suggest improving glacier mass balance si",
+    "misattributed": "Space-based gravitational wave detection is based on the astrodynamical equations derived from gravitational theory to detect changes in distance between spacecraft/celestial bodies and/or their state changes caused by g",
+    "misattribution_source": "arXiv:2409.00927 — Space gravitational wave detection: Progress and outlook",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "2409.00927",
+    "title": "Space gravitational wave detection: Progress and outlook",
+    "accurate": "Space-based gravitational wave detection is based on the astrodynamical equations derived from gravitational theory to detect changes in distance between spacecraft/celestial bodies and/or their state changes caused by g",
+    "misattributed": "Reliable and robust methods of predicting the crystal structure of a compound, based only on its chemical composition, is crucial to the study of materials and their applications. Despite considerable ongoing research ef",
+    "misattribution_source": "arXiv:1702.08576 — A Tetrahedron-tiling Method for Crystal Structure Prediction",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "1702.08576",
+    "title": "A Tetrahedron-tiling Method for Crystal Structure Prediction",
+    "accurate": "Reliable and robust methods of predicting the crystal structure of a compound, based only on its chemical composition, is crucial to the study of materials and their applications. Despite considerable ongoing research ef",
+    "misattributed": "Advanced epidemic forecasting is critical for enabling precision containment strategies, highlighting its strategic importance for public health security. While recent advances in Large Language Models (LLMs) have demons",
+    "misattribution_source": "arXiv:2505.12738 — EpiLLM: Unlocking the Potential of Large Language Models in ",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "2505.12738",
+    "title": "EpiLLM: Unlocking the Potential of Large Language Models in Epidemic Forecasting",
+    "accurate": "Advanced epidemic forecasting is critical for enabling precision containment strategies, highlighting its strategic importance for public health security. While recent advances in Large Language Models (LLMs) have demons",
+    "misattributed": "The basic concept in Neural Machine Translation (NMT) is to train a large Neural Network that maximizes the translation performance on a given parallel corpus. NMT is then using a simple left-to-right beam-search decoder",
+    "misattribution_source": "arXiv:1702.01806 — Beam Search Strategies for Neural Machine Translation",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "1702.01806",
+    "title": "Beam Search Strategies for Neural Machine Translation",
+    "accurate": "The basic concept in Neural Machine Translation (NMT) is to train a large Neural Network that maximizes the translation performance on a given parallel corpus. NMT is then using a simple left-to-right beam-search decoder",
+    "misattributed": "The increasing uptake of electrical vehicles (EVs) has increased the awareness of battery degradation costs and how they can be minimized. However, from a planning perspective it is difficult to integrate battery degrada",
+    "misattribution_source": "arXiv:2203.04642 — Electrical Vehicle Fleet Routing Accounting for Dynamic Batt",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "2203.04642",
+    "title": "Electrical Vehicle Fleet Routing Accounting for Dynamic Battery Degradation",
+    "accurate": "The increasing uptake of electrical vehicles (EVs) has increased the awareness of battery degradation costs and how they can be minimized. However, from a planning perspective it is difficult to integrate battery degrada",
+    "misattributed": "Exoplanet atmosphere studies are often enriched by synergies with brown dwarf analogs. However, many key molecules commonly seen in brown dwarfs have yet to be confirmed in exoplanet atmospheres.",
+    "misattribution_source": "arXiv:2307.06242 — ExoGemS Detection of a Metal Hydride in an Exoplanet Atmosph",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  },
+  {
+    "arxiv_id": "2307.06242",
+    "title": "ExoGemS Detection of a Metal Hydride in an Exoplanet Atmosphere",
+    "accurate": "Exoplanet atmosphere studies are often enriched by synergies with brown dwarf analogs. However, many key molecules commonly seen in brown dwarfs have yet to be confirmed in exoplanet atmospheres.",
+    "misattributed": "Protein structure prediction can be shown to be an NP-hard problem; the number of conformations grows exponentially with the number of residues. The native conformations of proteins occupy a very small subset of these, h",
+    "misattribution_source": "arXiv:physics/9708012 — Protein structure prediction as a hard optimization problem:",
+    "_note": "accurate 取自本篇摘要、misattributed 取自 misattribution_source 那篇摘要,均在句子边界截断 —— 句中截断会切掉论文真正的发现,留下的纯背景铺垫会被相关性层正当地判低相关,那是用例缺陷而非误拒。"
+  }
+]

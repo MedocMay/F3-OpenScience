@@ -80,10 +80,32 @@ The badge `no fabricated citation passes the signing gate` is literally true, si
 misattribution is not fabrication. It nonetheless invites a stronger reading than the code
 supports. With a provider configured, set `COE_RELEVANCE=llm` to make layer 4 blocking.
 
-**The relevance layer's accuracy rests on n=1.** `experiments/relevance/run_batch.py` exists to
-fix that: nine real papers, each paired with an accurate claim drawn from its own abstract and a
-misattributed one drawn from a different real paper's abstract, reporting both misattributions
-missed and accurate citations false-rejected. It has not yet been run against a real model.
+**Measured against a real model, 2026-07-29 (DeepSeek, `experiments/relevance/run_batch.py`):**
+nine real papers, each paired with an accurate claim drawn from its own abstract and a
+misattributed one drawn from a different real paper's abstract, so the ground truth is auditable
+by opening two links rather than resting on anyone's word.
+
+    misattributions gated      9/9      missed          0
+    accurate citations passed  9/9      false-rejected  0
+
+Both directions are reported because a scorer tuned to catch every misattribution starts gating
+accurate citations, and quoting only one of the two numbers is how a gate gets tuned into
+uselessness in either direction. Nine is still nine.
+
+**These numbers only exist because the verdict was made reproducible first.** The first run of
+this batch reported 8/9 on the second row. That one apparent false rejection was neither a bad
+case nor a real misjudgement: no `temperature` was set anywhere in the codebase, so the relevance
+verdict was **sampled**. Scored eight times on identical input, that borderline claim returned
+0.6, 1.0, 0.0, 1.0, 0.0, 0.8, 0.9, 0.9 — crossing the 0.10 threshold twice. Clear-cut inputs were
+stable across the same eight calls (a misattribution scored 0.0 every time), so the signal is
+real and the variance concentrates on genuinely ambiguous claims. The relevance call is now
+pinned to `temperature=0`, after which the same claim scored 0.8 eight times out of eight.
+
+**A signing gate whose answer depends on the draw is not a gate**, and this project had neither a
+setting for that nor a metric for it. Zero temperature is the strongest request a hosted API
+offers, not a guarantee; residual variance is recorded in `layers["llm_relevance"]` rather than
+hidden. **Verdict reproducibility belongs alongside false-rejection and missed-fabrication as a
+reported property, and currently is not one.** That is open work.
 
 ### 🟡 Retrieval finds adjacent work, and the pipeline over-claims it
 

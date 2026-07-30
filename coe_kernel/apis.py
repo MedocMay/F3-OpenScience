@@ -176,14 +176,41 @@ def _get(url: str, svc: str, timeout: int = 15):
     _fails[svc] += 1
     return None, reason if _RETRY == 0 else f"{reason}:exhausted"
 
+# arXiv has carried two identifier schemes. The post-2007 one (2306.01234) and the
+# pre-2007 one (hep-th/9711200, cond-mat.str-el/0506620). Only the first was
+# recognised here, and an unrecognised string fell through to "the registry
+# confirms this does not exist".
+# arXiv 有两套标识:2007 年后的(2306.01234)与 2007 年前的(hep-th/9711200、
+# cond-mat.str-el/0506620)。此处只认前者,而认不出的字符串会一路落到
+# 「登记处确证不存在」。
+#
+# The consequence was a false rejection of the worst available kind. hep-th/9711200
+# is Maldacena's AdS/CFT paper, cited some twenty thousand times, and this verifier
+# called it a fabrication — not "unresolved", but a positive claim about the world.
+# Every pre-2007 arXiv citation, which is most of the foundational physics and maths
+# literature, was in the same position.
+# 后果是一次最坏形态的误拒。hep-th/9711200 是 Maldacena 的 AdS/CFT 论文,被引约
+# 两万次,而本校验器称它是捏造 —— 不是「无法核验」,而是一个关于世界的正面断言。
+# 每一条 2007 年前的 arXiv 引用都处在同样的位置,而那几乎是物理与数学奠基文献的全部。
+#
+# This is the project's own thesis arriving inside its own kernel: a coverage
+# boundary — a regex that happened to know one of two formats — reported as a fact
+# about what exists.
+# 这是本项目的论点抵达了它自己的内核:一条覆盖边界(一个恰好只认识两种格式之一的
+# 正则),被报告成了关于「什么存在」的事实。
 _ARXIV_RE = re.compile(r"\b(\d{4}\.\d{4,5})(v\d+)?\b")
+_ARXIV_OLD_RE = re.compile(r"\b([a-z][a-z-]+(?:\.[A-Za-z-]+)?/\d{7})(v\d+)?\b")
 _DOI_RE = re.compile(r"\b(10\.\d{4,9}/[-._;()/:A-Za-z0-9]+)\b")
 
 def check_arxiv(arxiv_id: str):
     """Layer 1:arXiv ID 是否真实存在。返回 (exists, title)。"""
-    m = _ARXIV_RE.search(arxiv_id or "")
+    m = _ARXIV_RE.search(arxiv_id or "") or _ARXIV_OLD_RE.search(arxiv_id or "")
     if not m:
-        return False, None
+        # Not "the registry denies it" — we did not recognise the identifier, which
+        # is a statement about this parser and not about the world. Unknown.
+        # 这不是「登记处否认它」—— 是我们没认出这个标识,那是关于本解析器的陈述,
+        # 不是关于世界的。判未知。
+        return None, None
     aid = m.group(1)
     data, src = _get(f"https://export.arxiv.org/api/query?id_list={aid}", "arxiv")
     if not data:
@@ -197,7 +224,7 @@ def check_arxiv(arxiv_id: str):
         title = (entry.find("a:title", ns).text or "").strip()
         # arXiv 对不存在的 id 也返回一个空 entry;用 id 里是否含该号判定
         eid = (entry.find("a:id", ns).text or "")
-        return (aid in eid), (title if aid in eid else None)
+        return (aid in eid), (title if aid in eid else None)   # 旧格式的 id 里同样含该串
     except Exception:
         return None, None
 

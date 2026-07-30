@@ -31,7 +31,25 @@ class LLMRelevance(RelevanceScorer):
                   f"{('Abstract: ' + paper_abstract) if paper_abstract else ''}\n\n"
                   "Does the cited paper plausibly support the claim? "
                   "Reply ONLY one number 0.0-1.0. No words.")
-        r = self.router.complete([{"role": "user", "content": prompt}], model=self.model)
+        # temperature=0. Sampling a verification verdict means the same citation can
+        # pass one run and be gated the next: measured on DeepSeek, one borderline
+        # claim scored 0.6 1.0 0.0 1.0 0.0 0.8 0.9 0.9 across eight identical calls,
+        # crossing the 0.10 threshold twice. Clear-cut cases were stable (a
+        # misattribution scored 0.0 all eight times), so the signal is real — but a
+        # signing gate whose verdict depends on the draw is not a gate.
+        # temperature=0。对一个校验判定做采样,意味着同一条引用这次通过、下次被拦:
+        # 在 DeepSeek 上实测,一条边界论断在八次完全相同的调用里打出
+        # 0.6 1.0 0.0 1.0 0.0 0.8 0.9 0.9,两次越过 0.10 阈值。判然分明的用例是稳定的
+        # (一条张冠李戴八次全打 0.0),所以信号是真的 —— 但一个判定取决于抽签的签名门,
+        # 不成其为门。
+        #
+        # Zero temperature is not a guarantee of determinism from a hosted model; it
+        # is the strongest request the API offers. The remaining variance is recorded
+        # rather than hidden — see `layers["llm_relevance"]` in verify.py.
+        # 零温度并不能向托管模型索取到确定性,它只是 API 提供的最强请求。残余方差被
+        # 记录而非隐藏 —— 见 verify.py 里的 `layers["llm_relevance"]`。
+        r = self.router.complete([{"role": "user", "content": prompt}],
+                                 model=self.model, temperature=0)
         if not r["ok"]:
             return -1.0                      # 模型不可达 -> verify 回退标注
         m = re.search(r"[01](?:\.\d+)?", r["text"])
