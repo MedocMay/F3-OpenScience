@@ -1,7 +1,37 @@
 name: CI
 on: [push, pull_request]
+
+# Two regression jobs, because "the tests are red" was answering two different
+# questions at once and you could not tell which.
+# 两个回归 job,因为「测试红了」此前同时回答了两个不同的问题,而你分不清是哪一个。
+#
+#   offline  did a code change break something?   deterministic, must pass
+#   live     did the world change?                may legitimately degrade
+#   offline  代码改动有没有弄坏东西?              确定性的,必须通过
+#   live     世界有没有变?                        可以合理地降级
+#
+# On 2026-07-27 this repository had one commit go red and the next go green with no
+# relevant change in between: the academic APIs were rate-limiting the runner. A
+# flaky pipeline trains the reflex of re-running it, and a genuine regression then
+# gets dismissed as "just the network". Worse, green stopped carrying information —
+# it meant "either the code is fine or arXiv was in a good mood", and those are not
+# the same claim.
+# 2026-07-27 本仓库出现过相邻两个 commit 一红一绿、中间没有任何相关改动的情况:
+# 学术 API 在限流这台 runner。抖动的流水线会训练出「再跑一次」的反射,于是真实回归
+# 会被当成「网络问题」打发掉。更糟的是绿色不再携带信息 —— 它的含义变成「要么代码
+# 没问题,要么 arXiv 今天心情好」,而那是两个不同的主张。
+#
+# BRANCH PROTECTION · 分支保护
+# Require `offline`. Do not require `live`: a live failure is worth seeing and worth
+# investigating, and is not by itself grounds to block a merge — the code may be
+# perfectly fine and the index merely unreachable. Requiring it would reintroduce
+# exactly the flakiness this split removes.
+# 应要求 `offline`。不要要求 `live`:live 失败值得看见、值得追查,但它本身不构成阻止
+# 合并的理由 —— 代码可能完全正常,只是索引够不着。把它设为必需,等于把这次拆分刚
+# 消掉的抖动重新引回来。
+
 jobs:
-  python:
+  contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -17,23 +47,83 @@ jobs:
               Draft202012Validator.check_schema(json.load(open(f)))
               print("ok", f)
           PY
-      - name: Regression (suite list · tests/SUITES)
-        # Suites that hit live academic APIs (arXiv / CrossRef / OpenAlex) skip
-        # themselves when those services are unreachable — CI runners are often
-        # rate-limited. Skipping is correct; weakening assertions would hide
-        # real regressions. See tests/_netguard.py.
-        # 打真实学术 API 的套件在服务不可达时会自行跳过 —— CI 常被限流。
-        # 跳过是对的;放宽断言会掩盖真实回归。见 tests/_netguard.py。
-        run: |
-          fail=0
-          # Same list make test uses — see tests/SUITES · 与 make test 同一份清单
-          for t in $(sed 's/#.*//' tests/SUITES | tr -d '[:blank:]' | grep .); do
-            echo "──────── $t ────────"
-            python tests/$t.py || { echo "::error::$t FAILED"; fail=1; }
-          done
-          exit $fail
       - name: Build wheel
         run: python -m build --wheel
+
+  offline:
+    name: Regression - offline (deterministic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11" }
+      - run: pip install jsonschema cryptography
+
+      - name: Fixture provenance
+        # A recorded fixture goes stale silently: if an API changes its response
+        # shape, this job stays green because it is replaying the world as of the
+        # capture date. Print that date so the staleness is at least visible, and
+        # let the `live` job be what actually catches it.
+        # 录制的 fixture 会无声过期:若某个 API 改了响应结构,本 job 照样绿,因为它
+        # 复放的是采集当天的世界。把采集日期打出来,至少让过期可见;真正抓这件事的
+        # 是 live job。
+        run: |
+          python - <<'PY'
+          import json, pathlib, datetime as dt
+          m = pathlib.Path("tests/fixtures/api_cache/MANIFEST.json")
+          if not m.exists():
+              print("::error::no fixture - record one with scripts/record_fixtures.py"); raise SystemExit(1)
+          d = json.loads(m.read_text())
+          cap = dt.datetime.fromisoformat(d["captured_utc"])
+          age = (dt.datetime.now(dt.timezone.utc) - cap).days
+          print(f"captured {d['captured_utc']}  ({age} days ago)  responses={d['responses']}  complete={d.get('complete')}")
+          if not d.get("complete", False):
+              print("::warning::fixture was recorded incomplete - see suites_skipped_empty / suites_not_replayable")
+          if age > 60:
+              print(f"::warning::fixture is {age} days old; re-record so offline still replays a world that exists")
+          PY
+
+      - name: Regression - offline
+        # COE_OFFLINE makes a cache miss an error rather than a request, so this job
+        # cannot silently reach the network and quietly become the live job.
+        # COE_OFFLINE 让缓存未命中成为错误而非请求,因此本 job 无法悄悄摸到网络、
+        # 变成另一个 live job。
+        env:
+          COE_OFFLINE: "1"
+          COE_CACHE: ${{ github.workspace }}/tests/fixtures/api_cache
+        run: |
+          fail=0
+          for t in $(sed 's/#.*//' tests/SUITES | tr -d '[:blank:]' | grep .); do
+            echo "-------- $t --------"
+            python tests/$t.py || { echo "::error::$t FAILED offline - a code change, or a fixture gap"; fail=1; }
+          done
+          exit $fail
+
+  live:
+    name: Regression - live (may degrade)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.11" }
+      - run: pip install jsonschema cryptography
+
+      - name: Regression - live APIs
+        # Suites that need live academic APIs skip themselves when a capability is
+        # unavailable, and say so: `(0 ran - N SKIPPED, not run)`. Read those counts.
+        # A suite reporting PASSED having executed nothing is not a pass, and before
+        # tests/_netguard.py distinguished them the two looked identical.
+        # 需要真实学术 API 的套件在能力不可用时会自行跳过,并写明
+        # `(0 ran - N SKIPPED, not run)`。要读那些计数。一个什么都没执行却报 PASSED
+        # 的套件不算通过,而在 tests/_netguard.py 区分它们之前,两者长得一模一样。
+        run: |
+          fail=0
+          for t in $(sed 's/#.*//' tests/SUITES | tr -d '[:blank:]' | grep .); do
+            echo "-------- $t --------"
+            python tests/$t.py || { echo "::error::$t FAILED against live services"; fail=1; }
+          done
+          exit $fail
+
   typescript:
     runs-on: ubuntu-latest
     steps:
@@ -46,4 +136,4 @@ jobs:
       - name: Codegen drift check (generated == contracts)
         run: |
           bash scripts/gen-types.sh 2>/dev/null || true
-          git diff --exit-code generated 2>/dev/null || (echo "generated/ out of sync — run scripts/gen-types.sh" && exit 1)
+          git diff --exit-code generated 2>/dev/null || (echo "generated/ out of sync - run scripts/gen-types.sh" && exit 1)
