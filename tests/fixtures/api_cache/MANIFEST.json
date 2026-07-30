@@ -1,5 +1,5 @@
 {
-  "captured_utc": "2026-07-29T06:18:14+00:00",
+  "captured_utc": "2026-07-30T03:22:06+00:00",
   "suites_recorded": [
     "test_coe",
     "test_flywheel",
@@ -21,6 +21,6 @@
   "suites_not_replayable": [],
   "complete": true,
   "responses": 55,
-  "bytes": 1456358,
+  "bytes": 1411337,
   "note": "Replay is at the network boundary: url -> raw response. All verifier logic still runs. This fixture goes stale silently — the live CI job exists to catch that. 复放点在网络边界(URL -> 原始响应),校验逻辑照常执行。本 fixture 会无声过期,联网 CI job 就是为抓这件事而存在。"
 }

@@ -122,6 +122,59 @@ def _throttle(svc: str) -> None:
         time.sleep(wait)
     _last_call[svc] = time.time()
 
+def _normalise(raw: str, svc: str) -> str:
+    """Strip fields that describe the request or the server, not the world.
+
+    剥掉描述「这次请求」或「服务器」而非描述世界的字段。
+
+    Re-recording the fixture produced a diff on more than fifty files whose content
+    had not meaningfully changed. The culprit was OpenAlex's `meta` block:
+    `db_response_time_ms` is a server timing measurement and differs on every single
+    call, and `count` moves as the index grows. `match_openalex` reads only
+    `results`; `meta` is never touched by any parser here.
+    重录 fixture 会在五十多个文件上产生 diff,而它们的内容并没有实质变化。原因是
+    OpenAlex 的 `meta` 块:`db_response_time_ms` 是服务端计时,每一次调用都不同,
+    而 `count` 随索引增长而变。`match_openalex` 只读 `results`,`meta` 在此处
+    没有任何解析器碰过。
+
+    The cost of leaving it in is not noise. A fixture that changes on every recording
+    cannot signal that anything real changed — a genuine shift in an API's response
+    shape would arrive buried in fifty files of timing jitter, and that is precisely
+    what the fixture exists to surface.
+    留着它的代价不是噪音。一份每次录制都变的 fixture,无法再指示「有什么真的变了」——
+    API 响应结构的真实变化会淹没在五十个文件的计时抖动里,而那恰恰是 fixture 存在的
+    目的。
+
+    Normalisation happens once, before both caching and returning, so a live call and
+    a replay produce identical bytes. Doing it only on the cache write would make the
+    fixture something other than what it replays.
+    归一化只做一次,在缓存与返回之前,因此联网调用与离线复放产出相同的字节。只在写缓存
+    时做,会让 fixture 变成与它所复放之物不同的东西。
+
+    This is a deliberate loss of byte-fidelity to the API's exact output, taken only
+    for fields no code reads. Anything a parser touches is left alone.
+    这是刻意放弃对 API 原样输出的字节保真,且只针对没有任何代码读取的字段。
+    解析器碰过的东西一概不动。
+    """
+    if svc != "openalex":
+        return raw
+    try:
+        j = json.loads(raw)
+    except Exception:
+        return raw
+    if isinstance(j, dict) and "meta" in j:
+        j.pop("meta", None)
+        # sort_keys: after `meta` is gone the remaining byte difference between two
+        # recordings was key ordering — OpenAlex does not return a stable order, and
+        # a deep comparison of the parsed objects showed no difference at all. Object
+        # key order carries no meaning in JSON, so canonicalising it is free.
+        # sort_keys:剥掉 meta 之后,两次录制剩下的字节差异是键序 —— OpenAlex 不保证
+        # 顺序稳定,而对解析后的对象做深度比较显示两者毫无差异。JSON 里对象键序不携带
+        # 语义,所以规范化它没有代价。
+        return json.dumps(j, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return raw
+
+
 def _cache_path(key: str) -> str:
     return os.path.join(_CACHE_DIR, hashlib.sha256(key.encode()).hexdigest()[:20] + ".json")
 
@@ -147,6 +200,7 @@ def _get(url: str, svc: str, timeout: int = 15):
         try:
             req = urllib.request.Request(url, headers=_UA)
             raw = urllib.request.urlopen(req, timeout=timeout).read().decode(errors="replace")
+            raw = _normalise(raw, svc)      # 归一化在缓存与返回之前,两条路径字节一致
             _fails[svc] = 0
             data = {"raw": raw}
             json.dump(data, open(cp, "w"))
